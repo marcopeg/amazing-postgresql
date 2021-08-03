@@ -4,7 +4,7 @@ A collection of info, queries, resources and ideas on PostgreSQL
 ---
 
 - Why is Posgres so cool?
-- How to run Postgres
+- [How to run Postgres](./setup/run-with-docker)
 - Testing Postgres
   - [Run Postgres queries on JMeter](./testing/run-postgres-queries-on-jmeter/)
 - Projects
