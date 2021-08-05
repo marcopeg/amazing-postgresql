@@ -1,16 +1,27 @@
 # Run PostgreSQL with Docker
-The simple and contained way to run any version of PostgreSQL
+
+The simple and containerized way to run any version of [PostgreSQL][postgres].
+
+- [Prerequisites](#prerequisites)
+- [Run PostgreSQL with Docker](#run-postgresql-with-docker)
+- [Run PostgreSQL with Docker Compose](#run-postgresql-with-docker-compose)
+- [Run PSQL with Docker](#run-psql-with-docker)
+- [Run a SQL query programmatically](#run-a-sql-query-programmatically)
+- [Run an SQL script programmatically](#run-an-sql-script-programmatically)
 
 ---
 
 ## Prerequisites
 
-- Docker
-- Make
+The following notes are written using MacOS as running environment and assume you have the following software installed on your machine:
 
-👉 Scroll down for the detailed instructions how to resolve the prerequisites.
+- [Docker][docker]
+- [Docker Compose][docker-compose]
+- [Make][make]
 
-## Run Postgres with Docker
+---
+
+## Run PostgreSQL with Docker
 
 The official PostgreSQL Docker image is:  
 https://hub.docker.com/_/postgres
@@ -33,9 +44,31 @@ docker run \
 - `-v` sets a persisted data volume for your database
 - `-e` sets the password for the default user (`postgres`) on the default database (`postgres`)
 
-👉 The cool thing is that you can play with many different versions of PostgreSQL by changing the tag of the image that you want to run.
+> 👉 The cool thing is that you can play with many different versions of PostgreSQL by changing the tag of the image that you want to run.
 
-## Run PSQL against the running container
+It is common to store bash commands into a [Makefile][make] so that you don't have to remember them.
+
+🔗 Please have a look at [this example Makefile](./Makefile).
+
+---
+
+## Run PostgreSQL with Docker Compose
+
+It is common to describe a complex application as a collection of containers using [Docker Compose][docker-compose].
+
+This way, you can easily start/stop containers using:
+
+```bash
+docker-compose up
+
+docker-compose down
+```
+
+And enjoy container-to-container automatic DNS mapping using the container's names or the [_links_ attribute](https://docs.docker.com/compose/compose-file/compose-file-v3/#links).
+
+---
+
+## Run PSQL with Docker
 
 You can also use Docker to run the `psql` cli tool.
 
@@ -61,6 +94,8 @@ docker run \
 - `-it` will attach your terminal to the container's shell
 - `--link` will create a DNS to the PostgreSQL running container
 
+---
+
 ## Run a SQL query programmatically
 
 Using `psql` from the same container:
@@ -82,6 +117,8 @@ docker run \
   -c 'select now();'
 ```
 
+---
+
 ## Run an SQL script programmatically
 
 Using `psql` from the same container:
@@ -102,3 +139,8 @@ docker run \
   psql postgresql://postgres:postgres@pg:5432/postgres \
   < example.sql
 ```
+
+[postgres]: https://www.postgresql.org/
+[docker]: https://www.docker.com/
+[docker-compose]: https://docs.docker.com/compose/
+[make]: https://www.gnu.org/software/make/manual/make.html
