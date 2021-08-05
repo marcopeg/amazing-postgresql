@@ -6,8 +6,9 @@ A collection of info, queries, resources and ideas on PostgreSQL
 - Why is Posgres so cool?
 - [How to run Postgres](./setup/run-with-docker)
 - Testing Postgres
-  - [Run Postgres queries on JMeter](./testing/run-postgres-queries-on-jmeter/)
-  - [Run Postgres load test](./testing/run-postgres-load-test)
+  - [Unit Tests on PostgreSQL](./testing/unit-tests)
+  - [Load Test on PostgreSQL](./testing/load-test)
+  - [Run PostgreSQL queries on JMeter](./testing/jmeter/)
 - Projects
   - [How to observe a table in Postgres](./projects/how-to-observe-a-table-in-postgres/)
   - How to handle counters in Postgres
