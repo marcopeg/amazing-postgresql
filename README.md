@@ -7,6 +7,7 @@ A collection of info, queries, resources and ideas on PostgreSQL
 - [How to run Postgres](./setup/run-with-docker)
 - Testing Postgres
   - [Run Postgres queries on JMeter](./testing/run-postgres-queries-on-jmeter/)
+  - [Run Postgres load test](./testing/run-postgres-load-test)
 - Projects
   - [How to observe a table in Postgres](./projects/how-to-observe-a-table-in-postgres/)
   - How to handle counters in Postgres
