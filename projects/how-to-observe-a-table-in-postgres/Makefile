@@ -11,7 +11,7 @@ pg_data?=.docker-data
 
 start:
 	@echo "Starting Postgres..."
-	@docker build -t pgtap ./pgtap
+	@docker build -t pgtap ../../testing/unit-tests/pgtap
 	@docker run --rm -d \
 		--name $(pg_name) \
 		-p 5432:5432 \
@@ -25,7 +25,7 @@ stop:
 
 psql:
 	@echo "Connecting to the database ("quit" to exit) ..."
-	@docker exec -it $(pg_name) psql -U postgres postgres
+	@docker exec -it $(pg_name) psql -U postgres test-db
 
 logs:
 	clear
@@ -35,17 +35,16 @@ logs:
 schema:
 	clear
 	@echo "Building Project ..."
-	@cat \
-		$(CURDIR)/src/foobar.sql \
+	@cat $(CURDIR)/src/table-changelog.sql \
+		 $(CURDIR)/src/observe-table.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 
 reset: schema
 	clear
-	@echo "Reset Database Schema ..."
-	@docker exec -i $(pg_name) psql -U postgres < reset-db.sql
+	@docker exec -i $(pg_name) psql -U postgres < ../../testing/unit-tests/reset-db.sql
 	@docker exec -i $(pg_name) psql -U postgres test-db < $(CURDIR)/$(pg_data)/init-schema.sql
 
-test: reset
+test-only:
 	clear
 	@echo "Running Unit Tests ..."
 	@docker run --rm \
@@ -55,3 +54,7 @@ test: reset
 		pgtap \
     	-h db -u postgres -w $(pg_password) -d test-db -t '/t/*.sql'
 
+test: reset test-only
+	
+seed: reset
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed.sql
