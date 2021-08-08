@@ -8,10 +8,10 @@ pg_name?=test-db
 pg_password?=postgres
 pg_version?=13.2
 pg_data?=.docker-data
-pgtap_version?=0.96.0-2
 
 start:
 	@echo "Starting Postgres..."
+	@docker build -t pgtap ./pgtap
 	@docker run --rm -d \
 		--name $(pg_name) \
 		-p 5432:5432 \
@@ -27,19 +27,26 @@ psql:
 	@echo "Connecting to the database ("quit" to exit) ..."
 	@docker exec -it $(pg_name) psql -U postgres postgres
 
-build:
+schema:
 	clear
 	@echo "Building Project ..."
 	@cat \
 		$(CURDIR)/src/foobar.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 
-test: build
+reset: schema
 	clear
-	@echo "Setting up Database ..."
+	@echo "Reset Database Schema ..."
 	@docker exec -i $(pg_name) psql -U postgres < reset-db.sql
 	@docker exec -i $(pg_name) psql -U postgres test-db < $(CURDIR)/$(pg_data)/init-schema.sql
+
+test: reset
 	clear
 	@echo "Running Unit Tests ..."
-	@docker run -it --rm --name pgtap --link $(pg_name):db -e PASSWORD=$(pg_password) -e DATABASE=test-db -v $(CURDIR)/tests/:/test lren/pgtap:$(pgtap_version) install.sh
+	@docker run --rm \
+		--name pgtap \
+		--link $(pg_name):db \
+		-v $(CURDIR)/tests/:/t \
+		pgtap \
+    	-h db -u postgres -w $(pg_password) -d test-db -t '/t/*.sql'
 

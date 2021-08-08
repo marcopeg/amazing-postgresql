@@ -1,6 +1,6 @@
 # Run Unit Tests on PostgreSQL
 
-[PgTap](pgtap) is a collection of [psql][psql] functions that facilitate testing your PostgreSQL schema.
+[PgTap](pgtap) is a collection of [psql][psql] functions that facilitate testing your [PostgreSQL][postgres] database.
 
 ## Prerequisites
 
@@ -17,12 +17,18 @@ This project simulates a PostgreSQL extension with its own unit tests.
 Run the following commands to run it:
 
 ```bash
-# Start PostgreSQL with Docker
+# Build the "pgtap" image and start PostgreSQL with Docker
 make start
 
 # Build the project and run the unit tests
 make test
+
+# Stop the running PostgreSQL and remove the container
+# (data is still persisted to the local disk)
+make stop
 ```
+
+---
 
 ## Project Structure
 
@@ -30,14 +36,26 @@ make test
 - `/tests` contains the project's tests
 - `reset-db.sql` contains a reset utility to be executed before the tests
 
+---
+
 ## PgTap on Docker
 
-This example uses Docker to run `pgtap`, this is the image I used:  
-https://hub.docker.com/r/lren/pgtap
+This example uses Docker to run `pgtap`, this is the repo I uses:  
+https://github.com/walm/docker-pgtap
 
-And here is its source-code:  
-https://github.com/LREN-CHUV/docker-pgtap
+> The issue is that project doesn't get any update since 2016, and PgTap has been improved since then. By building our custom `pgtap`image, we ensure to use the latest availale version of the software.
+
+---
+
+## Other Resources
+
+- https://medium.com/engineering-on-the-incline/unit-testing-postgres-with-pgtap-af09ec42795
+- https://medium.com/engineering-on-the-incline/unit-testing-functions-in-postgresql-with-pgtap-in-5-simple-steps-beef933d02d3
+- https://www.slideshare.net/justatheory/pgtap-best-practices
 
 
+[postgres]: https://www.postgresql.org/
+[docker]: https://www.docker.com/
+[make]: https://www.gnu.org/software/make/manual/make.html
 [pgtap]: https://pgtap.org/
 [psql]: https://www.postgresql.org/docs/13/app-psql.html
