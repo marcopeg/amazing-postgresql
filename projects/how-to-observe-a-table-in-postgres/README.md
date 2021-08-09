@@ -1,7 +1,15 @@
-# How to Observe a Table
+# How to Observe a Table in PostgreSQL
 
 Use a combination of triggers and json functions to subscribe to a [PostgreSQL][postgres] table data change
-and store a permanend log of anything that changes in your database.
+and store a permanent log of anything that change in your database.
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Run the Project](#run-the-project)
+- [How to List Triggers](#how-to-list-triggers)
+
+---
 
 ## Prerequisites
 
@@ -10,9 +18,11 @@ The following notes are written using MacOS as running environment and assume yo
 - [Docker][docker]
 - [Make][make]
 
+👉 [Read about the general prerequisites here. 🔗](../../#prerequisites-for-running-the-examples)
+
 ---
 
-## Run the Example
+## Run the Project
 
 This project simulates a PostgreSQL extension with its own unit tests.  
 Run the following commands to run it:
@@ -31,22 +41,41 @@ make stop
 
 ---
 
-Get table's triggers:
+## How to List Triggers
+
+Once you start playing with triggers, you will likely need to figure out which trigger is associated with which table.
+
+The following query will return all the triggers that exists in your database.
 
 ```sql
-select event_object_schema as table_schema,
-       event_object_table as table_name,
-       trigger_schema,
-       trigger_name,
-       string_agg(event_manipulation, ',') as event,
-       action_timing as activation,
-       action_condition as condition,
-       action_statement as definition
-from information_schema.triggers
-group by 1,2,3,4,6,7,8
-order by table_schema,
-         table_name;
+WITH "all_triggers" AS (
+  SELECT
+    "event_object_schema" AS "table_schema",
+    "event_object_table" AS "table_name",
+    "trigger_schema",
+    "trigger_name",
+    string_agg("event_manipulation", ',') AS "event",
+    "action_timing" AS "activation",
+    "action_condition" AS "condition",
+    "action_statement" AS "definition"
+  FROM "information_schema"."triggers"
+  GROUP BY 1,2,3,4,6,7,8
+  ORDER BY "table_schema", "table_name"
+)
+SELECT * FROM "all_triggers";
 ```
+
+You can refine the selection by applying filters to it:
+
+```sql
+WITH "all_triggers" AS (...)
+SELECT * FROM "all_triggers"
+WHERE "table_schema" = 'public';
+```
+
+👉 [Read more about the WITH statement in PostgreSQL 🔗](https://www.postgresql.org/docs/current/queries-with.html)
+
+---
 
 
 [postgres]: https://www.postgresql.org/

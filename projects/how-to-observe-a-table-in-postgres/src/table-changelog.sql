@@ -7,6 +7,6 @@ CREATE TABLE "public"."changelog" (
   "table" VARCHAR(255),
   "operation" VARCHAR(255),
   "new_data" JSON,
-  "old_data" JSON
+  "old_data" JSON,
   PRIMARY KEY ("id")
 );
