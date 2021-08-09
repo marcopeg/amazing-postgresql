@@ -18,7 +18,7 @@ The following notes are written using MacOS as running environment and assume yo
 - [Docker][docker]
 - [Make][make]
 
-👉 [Read about the general prerequisites here. 🔗](../../#prerequisites-for-running-the-examples)
+👉 [Read about the general prerequisites here. 🔗](../../README.md#prerequisites-for-running-the-examples)
 
 ---
 
