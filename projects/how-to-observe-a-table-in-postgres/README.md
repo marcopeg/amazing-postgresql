@@ -34,6 +34,10 @@ make start
 # Build the project and run the unit tests
 make test
 
+# Build the project and populate it with dummy data
+# so that you can play with it using a client like PSQL
+make seed
+
 # Stop the running PostgreSQL and remove the container
 # (data is still persisted to the local disk)
 make stop

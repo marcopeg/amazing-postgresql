@@ -10,6 +10,20 @@ In this project, I try to highlight how easy is to fail this idea by running mul
 
 > BUT: PLEASE DON'T USE TIMESTAMP AS PKEY!
 
+---
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Run the Project](#run-the-project)
+- [Using Timestamp as Primary Key](#using-timestamp-as-primary-key)
+- [But it is so easy to break it!](#but-it-is-so-easy-to-break-it)
+- [How to get a real time value in PostgreSQL?](#how-to-get-a-real-time-value-in-postgresql)
+- [A Tricky Solution](#a-tricky-solution)
+- [Alternatives](#alternatives)
+
+---
+
 ## Prerequisites
 
 The following notes are written using MacOS as running environment and assume you have the following software installed on your machine:
@@ -17,9 +31,11 @@ The following notes are written using MacOS as running environment and assume yo
 - [Docker][docker]
 - [Make][make]
 
+👉 [Read about the general prerequisites here. 🔗](../../README.md#prerequisites-for-running-the-examples)
+
 ---
 
-## Run the Example
+## Run the Project
 
 This project simulates a PostgreSQL extension with its own unit tests.  
 Run the following commands to run it:
@@ -31,6 +47,10 @@ make start
 # Build the project and run the unit tests
 make test
 
+# Build the project and populate it with dummy data
+# so that you can play with it using a client like PSQL
+make seed
+
 # Stop the running PostgreSQL and remove the container
 # (data is still persisted to the local disk)
 make stop
@@ -38,7 +58,7 @@ make stop
 
 ---
 
-## Timestamp as Primary Key
+## Using Timestamp as Primary Key
 
 This is the structure of a table that many of us have been tempted to create over the years:
 
