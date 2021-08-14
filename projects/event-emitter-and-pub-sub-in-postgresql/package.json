@@ -1,0 +1,16 @@
+{
+  "name": "event-emitter-and-pub-sub-in-postgresql",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index",
+    "start:docker": "npm i && node src/index"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fetchq/pg-pubsub": "^0.8.0"
+  }
+}

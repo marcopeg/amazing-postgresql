@@ -1,0 +1,110 @@
+version: '3.8'
+services:
+
+  #
+  # Runs the PostgreSQL database
+  # (it also runs a healthcheck probe to figure out when the service is ready)
+  #
+  postgres:
+    container_name: test-db
+    image: postgres:13.2
+    ports:
+      - ${PG_PORT:-5432}:5432
+    volumes:
+      - .docker-data/pg/postgres:/var/lib/postgresql/data:consistent
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 40
+
+  #
+  # DATA PUBLISHER APP
+  # Runs a NodeJS application that emits messages on multiple channels choosing
+  # randomly between "ch1" and "ch2".
+  # (it starts AFTER the PostgreSQL service is ready, based on the healthcheck probe)
+  #
+  publisher:
+    container_name: publisher
+    image: node:14-alpine
+    depends_on: 
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .docker-data/node_modules:/usr/src/app/node_modules:cached
+      - ./package.json:/usr/src/app/package.json:delegated
+      - ./package-lock.json:/usr/src/app/package-lock.json:delegated
+      - ./src/publisher.js:/usr/src/app/src/index.js:delegated
+    environment:
+      NODE_ENV: development
+      PGSTRING: postgresql://postgres:postgres@postgres:5432/postgres
+    working_dir: /usr/src/app
+    entrypoint: ['npm', 'run', 'start:docker']
+
+
+  #
+  # SUBSCRIBER APP - #1 Instance
+  # Runs a NodeJS application that subscribes to a channel and does something with
+  # the data that gets emitted.
+  #
+  subscriber1:
+    container_name: subscriber1
+    image: node:14-alpine
+    depends_on: 
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .docker-data/node_modules:/usr/src/app/node_modules:cached
+      - ./package.json:/usr/src/app/package.json:delegated
+      - ./package-lock.json:/usr/src/app/package-lock.json:delegated
+      - ./src/subscriber.js:/usr/src/app/src/index.js:delegated
+    environment:
+      NODE_ENV: development
+      PGSTRING: postgresql://postgres:postgres@postgres:5432/postgres
+      CHANNEL: ch1
+    working_dir: /usr/src/app
+    entrypoint: ['npm', 'run', 'start:docker']
+
+  #
+  # SUBSCRIBER APP - #2 Instance
+  # Just another instance of the subscriber app, here I use an ENV variable to
+  # set it up so to listen to a different channel.
+  #
+  subscriber2:
+    container_name: subscriber2
+    image: node:14-alpine
+    depends_on: 
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .docker-data/node_modules:/usr/src/app/node_modules:cached
+      - ./package.json:/usr/src/app/package.json:delegated
+      - ./package-lock.json:/usr/src/app/package-lock.json:delegated
+      - ./src/subscriber.js:/usr/src/app/src/index.js:delegated
+    environment:
+      NODE_ENV: development
+      PGSTRING: postgresql://postgres:postgres@postgres:5432/postgres
+      CHANNEL: ch2
+    working_dir: /usr/src/app
+    entrypoint: ['npm', 'run', 'start:docker']
+
+
+  #
+  # Runs Adminer - a simple multi-tech data management tool
+  # (https://www.adminer.org)
+  #
+  adminer:
+    container_name: adminer
+    image: adminer:4.7
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    links:
+      - postgres:db
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+  

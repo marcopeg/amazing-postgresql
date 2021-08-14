@@ -1,0 +1,1 @@
+NOTIFY "ch1", '{"type":"foo", "data": 123}';

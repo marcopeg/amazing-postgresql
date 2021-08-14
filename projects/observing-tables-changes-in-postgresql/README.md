@@ -81,7 +81,6 @@ WHERE "table_schema" = 'public';
 
 ---
 
-
 [postgres]: https://www.postgresql.org/
 [docker]: https://www.docker.com/
 [make]: https://www.gnu.org/software/make/manual/make.html
