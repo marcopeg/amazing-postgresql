@@ -8,10 +8,10 @@ services:
   postgres:
     container_name: test-db
     image: postgres:13.2
-    ports:
-      - ${PG_PORT:-5432}:5432
-    volumes:
-      - .docker-data/pg/postgres:/var/lib/postgresql/data:consistent
+    # ports:
+    #   - ${PG_PORT:-5432}:5432
+    # volumes:
+    #   - .docker-data/pg/postgres:/var/lib/postgresql/data:consistent
     environment:
       - POSTGRES_PASSWORD=postgres
     restart: always
@@ -34,7 +34,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - .docker-data/node_modules:/usr/src/app/node_modules:cached
+      - .docker-data/publisher/node_modules:/usr/src/app/node_modules:cached
       - ./package.json:/usr/src/app/package.json:delegated
       - ./package-lock.json:/usr/src/app/package-lock.json:delegated
       - ./src/publisher.js:/usr/src/app/src/index.js:delegated
@@ -57,7 +57,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - .docker-data/node_modules:/usr/src/app/node_modules:cached
+      - .docker-data/subscriber1/node_modules:/usr/src/app/node_modules:cached
       - ./package.json:/usr/src/app/package.json:delegated
       - ./package-lock.json:/usr/src/app/package-lock.json:delegated
       - ./src/subscriber.js:/usr/src/app/src/index.js:delegated
@@ -80,7 +80,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - .docker-data/node_modules:/usr/src/app/node_modules:cached
+      - .docker-data/subscriber2/node_modules:/usr/src/app/node_modules:cached
       - ./package.json:/usr/src/app/package.json:delegated
       - ./package-lock.json:/usr/src/app/package-lock.json:delegated
       - ./src/subscriber.js:/usr/src/app/src/index.js:delegated
@@ -91,20 +91,19 @@ services:
     working_dir: /usr/src/app
     entrypoint: ['npm', 'run', 'start:docker']
 
-
   #
   # Runs Adminer - a simple multi-tech data management tool
   # (https://www.adminer.org)
   #
-  adminer:
-    container_name: adminer
-    image: adminer:4.7
-    restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
-    links:
-      - postgres:db
-    ports:
-      - "${ADMINER_PORT:-8080}:8080"
+  # adminer:
+  #   container_name: adminer
+  #   image: adminer:4.7
+  #   restart: always
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   links:
+  #     - postgres:db
+  #   ports:
+  #     - "${ADMINER_PORT:-8080}:8080"
   
