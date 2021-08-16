@@ -1,4 +1,4 @@
-# Populate Nested Data From Values
+# Populate Nested Data From _VALUES_ in PostgreSQL
 
 We usually handle [normalized data](https://en.wikipedia.org/wiki/Database_normalization) when dealing with a relational database like [PostgreSQL][postgres]. 
 
