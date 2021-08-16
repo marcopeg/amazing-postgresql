@@ -16,7 +16,7 @@ start:
 		--name $(pg_name) \
 		-p 5432:5432 \
 		-e POSTGRES_PASSWORD=postgres \
-		-v $(CURDIR)/$(pg_data):/var/lib/postgresql/data \
+		-v $(CURDIR)/pg/$(pg_data):/var/lib/postgresql/data \
 		postgres:$(pg_version)
 
 stop:
