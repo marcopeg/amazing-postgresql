@@ -36,6 +36,7 @@ schema:
 	clear
 	@echo "Building Project ..."
 	@cat $(CURDIR)/src/schema.sql \
+		 $(CURDIR)/src/pupulate-from-json.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 
 reset: schema
