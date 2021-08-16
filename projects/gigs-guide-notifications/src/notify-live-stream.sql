@@ -7,41 +7,40 @@ RETURNS TABLE (
 AS $$
 BEGIN
   RETURN QUERY
-  with
+  WITH
     "events_followed_by_users" as (
-        select
-        t1.user_id,
-        t1.artist_id,
-        t2.event_id
-        from users_performers as t1
-        join events_performers_temp as t2 on t1.artist_id = t2.artist_id
-        order by t1.user_id, t1.artist_id
+        SELECT
+        "t1"."user_id",
+        "t1"."artist_id",
+        "t2"."event_id"
+        FROM "users_performers" as "t1"
+        JOIN "events_performers_temp" as "t2" on "t1"."artist_id" = "t2"."artist_id"
     )
   , "events_by_country_code" as (
-      select 
-      t1.*, 
-      t2.country_code 
-      from events_followed_by_users as t1
-      join all_music_events_temp as t2 on t1.event_id = t2.event_id
-      where t2.country_code = 'XX'
+      SELECT 
+      "t1".*, 
+      "t2"."country_code" 
+      FROM "events_followed_by_users" as "t1"
+      JOIN "all_music_events_temp" as "t2" on "t1"."event_id" = "t2"."event_id"
+      WHERE "t2".country_code = 'XX'
   )
   , "users_events_notifications" as (
-      select
-      t1.user_id,
-      t1.event_id,
-      t1.country_code
-      from events_by_country_code as t1
-      where not exists (
-        select 
-        from users_sent_events as t2
-        where t2.event_id = t1.event_id and t2.user_id = t1.user_id
+      SELECT
+      "t1"."user_id",
+      "t1"."event_id",
+      "t1"."country_code"
+      FROM "events_by_country_code" as "t1"
+      WHERE NOT EXISTS (
+        SELECT 
+        FROM "users_sent_events" as "t2"
+        WHERE "t2"."event_id" = "t1"."event_id" and "t2"."user_id" = "t1"."user_id"
     )
   )
-  select 
-  t1.user_id::text as _user_id, 
-  array_agg(t1.event_id) as _event_ids
-  from users_events_notifications as t1
-  group by t1.user_id;
+  SELECT 
+  "t1"."user_id"::text as "_user_id", 
+  array_agg("t1"."event_id") as "_event_ids"
+  FROM "users_events_notifications" as "t1"
+  GROUP BY "t1"."user_id";
 
 END; $$
 LANGUAGE plpgsql;
