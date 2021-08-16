@@ -19,7 +19,6 @@ INSERT INTO "public"."users_sent_events"("user_id", "event_id") VALUES
 RETURNING "user_id", "event_id";
 
 
-
 WITH
   "all_notifications" AS (
     SELECT * FROM notify_live_stream()

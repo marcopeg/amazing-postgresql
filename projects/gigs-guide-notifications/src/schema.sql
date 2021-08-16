@@ -1,5 +1,3 @@
-CREATE EXTENSION postgis;
-
 DROP TABLE IF EXISTS "all_music_events_temp";
 CREATE TABLE "public"."all_music_events_temp" (
     "event_id" text NOT NULL,

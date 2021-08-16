@@ -1,3 +1,8 @@
+CREATE TYPE "notify_live_stream_return" AS (
+  "user_id" TEXT
+, "event_ids" TEXT[]
+);
+
 
 CREATE OR REPLACE FUNCTION "notify_live_stream_impl"() 
 RETURNS TABLE (
@@ -25,14 +30,11 @@ END; $$
 LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION "notify_live_stream"() 
-RETURNS TABLE (
-  "user_id" TEXT,
-  "event_ids" TEXT[]
-)
+RETURNS SETOF "notify_live_stream_return"
 AS $$
 BEGIN
   RETURN QUERY
-  SELECT
+  SELECT 
     "_user_id" AS "user_id",
     "_event_ids" AS "event_ids"
   FROM "notify_live_stream_impl"();
