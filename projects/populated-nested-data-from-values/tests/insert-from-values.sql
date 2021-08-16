@@ -15,6 +15,8 @@ WITH
     , ('hsl', 'Han', 'Solo', ARRAY [
         ('How to kiss Leia', '...')
     ])
+    -- bad guys don't write so much...
+    , ('dvd', 'Darth', 'Vader', NULL)
   )
 
 -- Insert data into the normalized schema:
@@ -55,14 +57,14 @@ JOIN "ins_profiles" ON "ins_accounts"."id" = "ins_profiles"."account_id";
 
 SELECT results_eq(
   'SELECT COUNT(*)::int AS "count" FROM "public"."accounts"',
-  ARRAY[2],
-  'There should be 2 records in table "accounts'
+  ARRAY[3],
+  'There should be 3 records in table "accounts'
 );
 
 SELECT results_eq(
   'SELECT COUNT(*)::int AS "count" FROM "public"."profiles"',
-  ARRAY[2],
-  'There should be 2 records in table "profiles'
+  ARRAY[3],
+  'There should be 3 records in table "profiles'
 );
 
 SELECT results_eq(

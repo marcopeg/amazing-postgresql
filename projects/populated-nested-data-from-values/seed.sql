@@ -13,6 +13,8 @@ WITH
     , ('hsl', 'Han', 'Solo', ARRAY [
         ('How to kiss Leia', '...')
     ])
+    -- bad guys don't write so much...
+    , ('dvd', 'Darth', 'Vader', NULL)
   )
 
 -- Insert data into the normalized schema:

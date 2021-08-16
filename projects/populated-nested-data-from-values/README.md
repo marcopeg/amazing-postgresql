@@ -1,8 +1,74 @@
 # Populare Nested Data From Values
 
+We usually handle normalized data when dealing with a relational database like [PostgreSQL][postgres]. 
 
-Nice query to figure out insert order with foreign keys:
-https://www.cybertec-postgresql.com/en/postgresql-foreign-keys-and-insertion-order-in-sql/
+A situation in which we have some login users with a profile who write blog articles will likely be described with 3 tables:
+
+- _accounts_: contains login related info
+- _profiles_: contains decorative info about the account
+- _articles_: contains the list of blog posts
+
+For my entire career, I've seen the following data-entry approach applied at application level (as in Go, NodeJS, .NET...):
+
+- INSERT INTO _accounts_ and get the LAST CREATED ID
+- INSERT INTO _profiles_, referencing the LAST CREATED ID
+- INSERT INTO _articles_, referencing the LAST CREATED ID
+
+> All these actions in separated queries, with or without a transaction, each with its own **round trip latency** and possibility for **networking errors**.
+
+In this project, we assume that one or more users are ready to be created, some may even have a list of articles already.
+
+We learn how to create the the complete dataset running a single round trip, leveraging on a few nice [PostgreSQL][postgres] features:
+
+- [WITH][with])
+- [VALUES][values]
+- [unnest()](https://www.postgresql.org/docs/current/functions-array.html)
+- [functions](https://www.postgresql.org/docs/current/sql-createfunction.html)
+
+---
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Run the Project](#run-the-project)
+- [Using the "unnest()" Function](#using-the-unnest-function)
+- [Data Set as VALUES](#data-set-as-values)
+
+---
+
+## Prerequisites
+
+The following notes are written using MacOS as running environment and assume you have the following software installed on your machine:
+
+- [Docker][docker]
+- [Make][make]
+
+👉 [Read about the general prerequisites here. 🔗](../../README.md#prerequisites-for-running-the-examples)
+
+---
+
+## Run the Project
+
+This project simulates a PostgreSQL extension with its own unit tests.  
+Run the following commands to run it:
+
+```bash
+# Build the "pgtap" image and start PostgreSQL with Docker
+make start
+
+# Build the project and run the unit tests
+make test
+
+# Build the project and populate it with dummy data
+# so that you can play with it using a client like PSQL
+make seed
+
+# Stop the running PostgreSQL and remove the container
+# (data is still persisted to the local disk)
+make stop
+```
+
+---
 
 ## Using the "unnest()" Function
 
@@ -176,3 +242,62 @@ GROUP BY "character";
 |     padme |    `75`     | `{1,2,3}` |
 |      luke |    `165`    | `{4,5,6}` |
 | ... | ... | ... | ... |
+
+---
+
+## Data Set as VALUES
+
+PostgreSQL's [`VALUS`][values] let you define a data set on the fly:
+
+```sql
+VALUES
+  ('Luke', 'Skywalker')
+, ('Darth', 'Vader');
+```
+
+| column1 | column2   |
+|---------|-----------|
+| Luke    | Skywalker |
+| Darth   | Vader     |
+
+You can use it in combination with [`WITH`][with] to customize the columns names:
+
+```sql
+WITH
+  "raw_data"("name", "surname") AS (
+    VALUES
+      ('Luke', 'Skywalker')
+    , ('Darth', 'Vader')
+  )
+SELECT * FROM "raw_data"
+```
+
+| name  | surname   |
+|-------|-----------|
+| Luke  | Skywalker |
+| Darth | Vader     |
+
+In this project we use this strategy to provide a full data set of users, with their profiles and the articles that belong to them:
+
+```sql
+WITH 
+  "raw_data" ("nickname", "name", "surname", "articles") AS (
+    VALUES
+      ('lsk', 'Luke', 'Skywalker', ARRAY [
+        ('How to blow the Death Star', '...')
+      , ('How to become a Jedi', '...')
+      ])
+    , ('hsl', 'Han', 'Solo', ARRAY [
+        ('How to kiss Leia', '...')
+    ])
+  )
+...
+```
+
+---
+
+[postgres]: https://www.postgresql.org/
+[docker]: https://www.docker.com/
+[make]: https://www.gnu.org/software/make/manual/make.html
+[with]: https://www.postgresql.org/docs/current/queries-with.html
+[values]: https://www.postgresql.org/docs/current/sql-values.html
