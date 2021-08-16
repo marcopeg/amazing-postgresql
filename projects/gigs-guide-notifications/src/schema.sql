@@ -7,15 +7,12 @@ CREATE TABLE "public"."all_music_events_temp" (
     CONSTRAINT "all_music_events_temp_pkey" PRIMARY KEY ("event_id")
 ) WITH (oids = false);
 
-
-
 DROP TABLE IF EXISTS "events_performers_temp";
 CREATE TABLE "public"."events_performers_temp" (
     "event_id" text NOT NULL,
     "artist_id" text NOT NULL,
     CONSTRAINT "events_performers_temp_event_id_artist_id" PRIMARY KEY ("event_id", "artist_id")
 ) WITH (oids = false);
-
 
 DROP TABLE IF EXISTS "users_performers";
 CREATE TABLE "public"."users_performers" (
@@ -24,7 +21,6 @@ CREATE TABLE "public"."users_performers" (
     CONSTRAINT "users_performers_pkey" PRIMARY KEY ("user_id", "artist_id")
 ) WITH (oids = false);
 
-
 DROP TABLE IF EXISTS "users_sent_events";
 CREATE TABLE "public"."users_sent_events" (
     "user_id" uuid NOT NULL,
@@ -32,3 +28,6 @@ CREATE TABLE "public"."users_sent_events" (
     CONSTRAINT "users_sent_events_pkey" PRIMARY KEY ("user_id", "event_id")
 ) WITH (oids = false);
 
+CREATE INDEX IF NOT EXISTS "notify_live_stream__all_music_events_temp__idx" 
+ON "all_music_events_temp" ("event_id" ASC)
+WHERE ("country_code" = 'XX');
