@@ -11,12 +11,13 @@ pg_data?=.docker-data
 
 start:
 	@echo "Starting Postgres..."
+	@mkdir -p $(CURDIR)/$(pg_data)
 	@docker build -t pgtap ../../testing/unit-tests/pgtap
 	@docker run --rm -d \
 		--name $(pg_name) \
 		-p 5432:5432 \
 		-e POSTGRES_PASSWORD=postgres \
-		-v $(CURDIR)/$(pg_data):/var/lib/postgresql/data \
+		-v $(CURDIR)/$(pg_data)/pg:/var/lib/postgresql/data \
 		postgres:$(pg_version)
 
 stop:

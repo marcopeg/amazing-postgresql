@@ -11,6 +11,7 @@ pg_data?=.docker-data
 
 start:
 	@echo "Starting Project..."
+	@mkdir -p $(CURDIR)/$(pg_data)
 	@docker-compose up -d
 	@docker-compose logs -f
 
