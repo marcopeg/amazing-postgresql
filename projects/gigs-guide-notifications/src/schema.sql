@@ -35,3 +35,10 @@ CREATE TABLE "public"."notify_live_stream_return" (
 CREATE INDEX IF NOT EXISTS "notify_live_stream__all_music_events_temp__idx" 
 ON "all_music_events_temp" ("event_id" ASC)
 WHERE ("country_code" = 'XX');
+
+DROP TABLE IF EXISTS "notify_live_stream_queue";
+CREATE TABLE "public"."notify_live_stream_queue" (
+    "user_id" TEXT PRIMARY KEY,
+    "event_ids" TEXT[],
+    "lock_until" TIMESTAMP WITH TIME ZONE DEFAULT now()
+);

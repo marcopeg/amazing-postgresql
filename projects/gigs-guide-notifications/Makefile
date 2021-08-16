@@ -38,6 +38,7 @@ schema:
 	@echo "Building Project ..."
 	@cat $(CURDIR)/src/schema.sql \
 		 $(CURDIR)/src/notify-live-stream.sql \
+		 $(CURDIR)/src/queue-live-stream.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 
 reset: schema
