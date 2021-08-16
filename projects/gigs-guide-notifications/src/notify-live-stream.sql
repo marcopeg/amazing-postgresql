@@ -1,7 +1,3 @@
-CREATE TYPE "notify_live_stream_return" AS (
-  "user_id" TEXT
-, "event_ids" TEXT[]
-);
 
 CREATE OR REPLACE FUNCTION "notify_live_stream_impl"() 
 RETURNS TABLE (

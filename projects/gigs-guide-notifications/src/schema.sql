@@ -26,6 +26,12 @@ CREATE TABLE "public"."users_sent_events" (
     CONSTRAINT "users_sent_events_pkey" PRIMARY KEY ("user_id", "event_id")
 ) WITH (oids = false);
 
+DROP TABLE IF EXISTS "notify_live_stream_return";
+CREATE TABLE "public"."notify_live_stream_return" (
+    "user_id" TEXT,
+    "event_ids" TEXT[]
+);
+
 CREATE INDEX IF NOT EXISTS "notify_live_stream__all_music_events_temp__idx" 
 ON "all_music_events_temp" ("event_id" ASC)
 WHERE ("country_code" = 'XX');
