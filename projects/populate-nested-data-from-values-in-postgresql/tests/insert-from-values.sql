@@ -4,6 +4,7 @@ SELECT plan(4);
 -- Insert multiple items who's data is distributed to multiple related tables
 -- https://stackoverflow.com/questions/20561254/insert-data-in-3-tables-at-a-time-using-postgres
 -- https://stackoverflow.com/questions/68791267/how-to-convert-plain-values-with-arrays-into-a-data-structure-in-postgresql
+
 WITH 
 -- Provide the raw data that needs to be stored:
   "raw_data" ("nickname", "name", "surname", "articles") AS (
