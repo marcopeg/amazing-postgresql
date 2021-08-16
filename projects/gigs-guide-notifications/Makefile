@@ -58,10 +58,3 @@ test: reset test-only
 	
 seed: reset
 	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed.sql
-
-gigs: reset
-	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/gg-core.sql
-	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/users_sent_events.sql
-
-foobar:
-	@docker exec -i $(pg_name) psql -U postgres test-db < ./foobar.sql

@@ -18,10 +18,10 @@ INSERT INTO "public"."users_sent_events"("user_id", "event_id") VALUES
   ('e2e04390-fe90-11eb-9a03-0242ac130001', 'event1') 
 RETURNING "user_id", "event_id";
 
+
+
 WITH
-  "notifications" AS (
+  "all_notifications" AS (
     SELECT * FROM notify_live_stream()
   )
-SELECT "user_id", unnest("event_ids") as "event_id" 
-FROM "notifications"
-WHERE "user_id" = 'e2e04390-fe90-11eb-9a03-0242ac130001';
+SELECT * FROM "all_notifications";

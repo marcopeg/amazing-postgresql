@@ -1,5 +1,5 @@
 
-CREATE OR REPLACE FUNCTION notify_live_stream_impl () 
+CREATE OR REPLACE FUNCTION "notify_live_stream_impl"() 
 RETURNS TABLE (
   "_user_id" TEXT,
   "_event_ids" TEXT[]
@@ -46,7 +46,7 @@ BEGIN
 END; $$
 LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION notify_live_stream () 
+CREATE OR REPLACE FUNCTION "notify_live_stream"() 
 RETURNS TABLE (
   "user_id" TEXT,
   "event_ids" TEXT[]
@@ -57,6 +57,6 @@ BEGIN
   SELECT
     "_user_id" AS "user_id",
     "_event_ids" AS "event_ids"
-  FROM notify_live_stream_impl();
+  FROM "notify_live_stream_impl"();
 END; $$
 LANGUAGE plpgsql;
