@@ -3,7 +3,6 @@ CREATE TYPE "notify_live_stream_return" AS (
 , "event_ids" TEXT[]
 );
 
-
 CREATE OR REPLACE FUNCTION "notify_live_stream_impl"() 
 RETURNS TABLE (
   "_user_id" TEXT,
@@ -27,7 +26,8 @@ BEGIN
   GROUP BY "t1"."user_id";
 
 END; $$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql
+IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION "notify_live_stream"() 
 RETURNS SETOF "notify_live_stream_return"
@@ -39,4 +39,5 @@ BEGIN
     "_event_ids" AS "event_ids"
   FROM "notify_live_stream_impl"();
 END; $$
-LANGUAGE plpgsql;
+LANGUAGE plpgsql
+IMMUTABLE;
