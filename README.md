@@ -28,6 +28,7 @@ Tag along in this journey and you will learn how a single tool can offer advance
   - [Timestamp as Primary Key in PostgreSQL](./projects/timestamp-as-primary-key-in-postgresql)
   - [Observing Tables Changes in PostgreSQL](./projects/observing-tables-changes-in-postgresql)
   - [Event Emitter & Pub/Sub in PostgreSQL](./projects/event-emitter-and-pub-sub-in-postgresql)
+  - [Populate Nested Data From _VALUES_ in PostgreSQL](./projects/populate-nested-data-from-values-in-postgresql)
   - How to handle counters in Postgres
   - How to do Event Sourcing in Postgres
   - How to handle Tasks in Postgres

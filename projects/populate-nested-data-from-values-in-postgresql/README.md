@@ -1,6 +1,6 @@
-# Populare Nested Data From Values
+# Populate Nested Data From Values
 
-We usually handle normalized data when dealing with a relational database like [PostgreSQL][postgres]. 
+We usually handle [normalized data](https://en.wikipedia.org/wiki/Database_normalization) when dealing with a relational database like [PostgreSQL][postgres]. 
 
 A situation in which we have some login users with a profile who write blog articles will likely be described with 3 tables:
 
@@ -20,7 +20,7 @@ In this project, we assume that one or more users are ready to be created, some 
 
 We learn how to create the the complete dataset running a single round trip, leveraging on a few nice [PostgreSQL][postgres] features:
 
-- [WITH][with])
+- [WITH][with]
 - [VALUES][values]
 - [unnest()](https://www.postgresql.org/docs/current/functions-array.html)
 - [functions](https://www.postgresql.org/docs/current/sql-createfunction.html)
