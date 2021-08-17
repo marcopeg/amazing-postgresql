@@ -2,15 +2,11 @@ WITH
   -- SEED CONFIGURATION AND STATIC DATA
   -- (we use this as source for dictionary-based randomic selections)
  "seed_config"("doc") AS ( VALUES ('{
-    "users_tot": 100,
+    "users_tot": 10000,
     "user_age_min": 18,
     "user_age_max": 80,
     "user_rand_min": 9999,
     "user_rand_max": 999999,
-    "followers_limit_min": 50,
-    "followers_limit_max": 75,
-    "following_limit_min": 1,
-    "following_limit_max": 10,
     "usernames": [
       "Luke",
       "Leia",
@@ -169,8 +165,25 @@ WITH
   RETURNING *
 )
 
+-->> Output >>
+SELECT * FROM "insert_users" LIMIT 10;
+
+
+
+
+
+WITH 
+  -- SEED CONFIGURATION AND STATIC DATA
+  -- (we use this as source for dictionary-based randomic selections)
+ "seed_config"("doc") AS ( VALUES ('{
+    "followers_limit_min": 50,
+    "followers_limit_max": 75,
+    "following_limit_min": 1,
+    "following_limit_max": 10
+  }'::json))
+
   -- produce a randomized list of "follow"
-, "users_following_users" AS (
+, "users_follows_data" AS (
     SELECT
       -- left user
       "id" 
@@ -180,7 +193,7 @@ WITH
     , (
         SELECT array_agg("id")
         FROM (
-          SELECT "id" FROM "insert_users" AS "t2"
+          SELECT "id" FROM "public"."users" AS "t2"
 
           -- enforce random values
           -- and make sure a user doesn't follow itself
@@ -203,13 +216,14 @@ WITH
         ) AS "sq1"
       ) AS "following"
 
-    FROM "insert_users" AS "t1"
+    FROM "public"."users" AS "t1"
+    WHERE "id" = "id"
     ORDER BY random()
 
     -- Limit the amount of following users to a percentage of the
     -- total amount of users.
     LIMIT (
-      (SELECT COUNT(*) FROM "insert_users")::int
+      (SELECT COUNT(*) FROM "public"."users")::int
       *
       -- The percentage itself is randomized between two margins
       -- all of this comes from the JSON
@@ -223,14 +237,14 @@ WITH
     )
   )
 
-, "users_follows" AS (
+, "insert_users_follows" AS (
   INSERT INTO "public"."users_follows"
   SELECT
     "id" AS "user_id_1"
   , "user_id_2" 
-  FROM "users_following_users", unnest("following") AS "user_id_2"
+  FROM "users_follows_data", unnest("following") AS "user_id_2"
   RETURNING *
 )
 
 -->> Output >>
-SELECT * FROM "users_follows";
+SELECT * FROM "users_follows_data" LIMIT 10;
