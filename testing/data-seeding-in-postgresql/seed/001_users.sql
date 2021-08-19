@@ -1,19 +1,38 @@
-BEGIN;
-SELECT plan(1);
-
-PREPARE "compute_generated_users_values" AS
 WITH 
   -- SEED CONFIGURATION AND STATIC DATA
   -- (we use this as source for dictionary-based randomic selections)
   "seed_config"("doc") AS ( VALUES ('{
-    "users_tot": 1,
+    "users_tot": 50000,
     "user_age_min": 18,
-    "user_age_max": 18,
-    "user_rand_min": 1,
-    "user_rand_max": 1,
-    "usernames": ["Luke"],
-    "modifiers": ["Happy"],
-    "countries": ["it"]
+    "user_age_max": 80,
+    "user_rand_min": 9999,
+    "user_rand_max": 999999,
+    "usernames": [
+      "Luke",
+      "Leia",
+      "Darth",
+      "Han",
+      "Obi-One",
+      "Chube",
+      "Yoda",
+      "Jabba",
+      "Kylo",
+      "Padme",
+      "Jar-Jar",
+      "Ray",
+      "C-3PO",
+      "R2-D2"
+    ],
+    "modifiers": [
+      "Happy",
+      "Glorious",
+      "Sad",
+      "Fortunate",
+      "Unluky",
+      "Lonely",
+      "Ferocious"
+    ],
+    "countries": ["it","us","fr","es","de","se","dk","no"]
   }'::json))
 
   -- GENERATED USERS DATA
@@ -123,29 +142,22 @@ WITH
     FROM "generated_users_data"
   )
 
--- Just output the data from the last CTE.
--- But I will skip the YearOfBirth as it uses a randomic value
--- that is based on "NOW()" and I still don't know how to fake it :-)
-SELECT
-  "uname",
-  "age",
-  "country"
-FROM "insert_users_values";
+  -- INSERT USERS
+  -- Here we run the real insert, even with a big dictionary we will encounter
+  -- duplicated usernames (there is a UNIQUE constraint on the table)
+  -- so it is best to just ignore duplicates
+  --
+  -- In order to create millions of users, we have to choose:
+  -- 1. Increase the size of the dictionary (modifiers and usernames)
+  -- 2. Remove the UNIQUE constraint
+  -- 3. Add another randomization factor to the username
+, "insert_users" AS (
+    INSERT INTO "public"."users" ("age", "uname", "bday", "country")
+    SELECT "age", "uname", "bday", "country" FROM "insert_users_values"
+    ON CONFLICT ON CONSTRAINT "users_uname_key" DO NOTHING
+    RETURNING *
+)
 
---
--- TESTS
---
-
-SELECT results_eq(
-  'compute_generated_users_values',
-  $$VALUES (
-      'Happy_Luke_03_1'  -- Username
-    , 18                 -- Age
-    , 'it'               -- Country
-    )$$,
-  'Should generate randomized users data'
-);
-
-SELECT * FROM finish();
-ROLLBACK;
+-->> Output >>
+SELECT * FROM "insert_users" LIMIT 10;
 

@@ -24,6 +24,7 @@ Tag along in this journey and you will learn how a single tool can offer advance
   - [Unit Tests on PostgreSQL](./testing/unit-tests)
   - [Load Test on PostgreSQL](./testing/load-test)
   - [Run PostgreSQL queries on JMeter](./testing/jmeter/)
+  - [Data Seeding in PostgreSQL](./testing/data-seeding-in-postgresql)
 - Projects
   - [Timestamp as Primary Key in PostgreSQL](./projects/timestamp-as-primary-key-in-postgresql)
   - [Observing Tables Changes in PostgreSQL](./projects/observing-tables-changes-in-postgresql)

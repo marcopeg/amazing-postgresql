@@ -3,7 +3,9 @@ SELECT plan(1);
 
 PREPARE "compute_json_config" AS
 WITH 
--- Static Data as JSON
+-- Static Data as JSON:
+-- This is just a nice way to provide parameters and/or
+-- configuration for a complex job.
 "seed_config"("doc") AS ( VALUES ('{
   "users_tot": 30,
   "user_age_min": 18,

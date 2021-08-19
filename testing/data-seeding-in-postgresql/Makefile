@@ -57,7 +57,30 @@ test-only:
 test: reset test-only
 	
 seed: reset
-	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+
+fill:
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/001_users.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/002_users_follows.sql
 
 run:
 	@docker exec -i $(pg_name) psql -U postgres test-db < ./run.sql
