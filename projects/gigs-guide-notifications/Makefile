@@ -60,3 +60,9 @@ test: reset test-only
 	
 seed: reset
 	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed.sql
+
+fill:
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed.sql
+
+run:
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./run.sql
