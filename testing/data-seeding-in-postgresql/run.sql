@@ -1,43 +1,30 @@
-WITH
-  -- Generate a list of random numbers:
-  "randomic_data" AS (
-    SELECT floor(random() * 10 + 1)AS "rand"
-    FROM generate_series(1,10) "id"
-  )
+-- This could take a loooong while!
+-- REFRESH MATERIALIZED VIEW "public"."users_relations";
 
-  -- Use the row-by-row randomic number to compose
-  -- realistic user information:
-, "user_data" AS (
+SELECT
+  *
+  -- List of the first 5 profiles that are followed by the current one
+,  (
     SELECT
-      -- randomic username
-        (
-          CONCAT(
-            'user_',
-            TO_CHAR(NOW() - INTERVAL '1y' * "rand" ,'YY')
-          )
-        ) AS "uname"
-
-      -- randomic year of birth
-      , DATE_TRUNC(
-        'day',
-        NOW() - INTERVAL '1d' * (
-          floor(random() * ((
-            ("rand" + 1) * 365
-          ) - (
-            "rand" * 365
-          ) + 1) + (
-            "rand" * 365
-          ))::int
-        )
-      ) AS "bday"
-
-    -- Also provide the simple age:
-    , "rand" AS "age"
-
-    -- Source values from the randomic list
-    FROM "randomic_data"
-  )
-
--- Eventually, use the generated dataset to populate a table
-SELECT * FROM "user_data"
+      array_agg("user_id_2")
+    FROM (
+      SELECT "user_id_2"
+      FROM "public"."users_follows"
+      WHERE "user_id_1" = "t1"."id"
+      LIMIT 5
+    ) AS "s1"
+  ) AS "following"
+  -- List of the first 5 profiles that are followers of the current one
+,  (
+    SELECT
+      array_agg("user_id_1")
+    FROM (
+      SELECT "user_id_1"
+      FROM "public"."users_follows"
+      WHERE "user_id_2" = "t1"."id"
+      LIMIT 5
+    ) AS "s1"
+  ) AS "followers"
+FROM "public"."users" AS "t1"
+LIMIT 10
 ;
