@@ -10,24 +10,27 @@ AS $$
 DECLARE
   VAR_r RECORD;
 BEGIN
-  -- Populate a temporary table with the cached results:
-  CREATE TEMP TABLE "cached_rows" ON COMMIT DROP AS
-  SELECT * FROM "cached_distances"
-    WHERE "city" = PAR_city
-      AND "distance" < PAR_distance;
+  -- Try to read from cache
+  SELECT 1 INTO VAR_r 
+  FROM "cached_distances" 
+  WHERE "city" = PAR_city
+    AND "distance" < PAR_distance 
+  LIMIT 1;
 
-  -- Evaluate and return the cached results if exist:
-  SELECT 1 INTO VAR_r FROM "cached_rows";
   IF FOUND THEN
     RETURN QUERY
-    SELECT * FROM "cached_rows";
+    SELECT * FROM "cached_distances" 
+    WHERE "city" = PAR_city 
+      AND "distance" < PAR_distance;
   ELSE
 
     -- Evaluate if the query has already been cached
     SELECT 1 INTO VAR_r FROM "cached_queries" WHERE "city" = PAR_city;
     IF FOUND THEN
       RETURN QUERY
-      SELECT * FROM "cached_rows";
+      SELECT * FROM "cached_distances" 
+      WHERE "city" = PAR_city 
+        AND "distance" < PAR_distance;
     ELSE
 
       -- Run the geolocation
