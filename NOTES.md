@@ -47,3 +47,7 @@ SELECT * FROM "users" ORDER BY random();
 
 Tutorial on temporary tables:  
 https://www.postgresqltutorial.com/postgresql-temporary-table/
+
+
+Explanation on functions caching:  
+https://www.enterprisedb.com/edb-docs/d/postgresql/reference/manual/13.1/plpgsql-implementation.html
