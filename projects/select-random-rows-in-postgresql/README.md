@@ -36,7 +36,8 @@ Well, there are 2 reasons:
 
 This chart show the execution time of the query in a table of 5 million rows. By incrementing the offset range **the performances deteriorates exponentially**.
 
-[![offset](./images/the-offset-method.png)](https://docs.google.com/spreadsheets/d/e/2PACX-1vSnAnSugZhCOFeqEf4U59EW2LfVuMcWFmHcjDQ5ehfVB2zh2X03J0z21RpgZtNpEcEC_Jojji1YjKL8/pubhtml?gid=0&single=true)
+
+[<img src="./images/the-offset-method.png" width="500" alt="The OFFSET method">](https://docs.google.com/spreadsheets/d/e/2PACX-1vSnAnSugZhCOFeqEf4U59EW2LfVuMcWFmHcjDQ5ehfVB2zh2X03J0z21RpgZtNpEcEC_Jojji1YjKL8/pubhtml?gid=0&single=true)
 
 **👉 This method is viable ONLY IF:**
 
