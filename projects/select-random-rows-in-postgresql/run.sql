@@ -5,48 +5,45 @@ CREATE TABLE IF NOT EXISTS "test_results" (
 , "avg_duration" REAL
 );
 
--- SELECT * FROM "users_with_ids" 
--- OFFSET (SELECT floor(random() * 100 + 1))
--- LIMIT 1;
+SELECT * FROM "users_with_ids" 
+OFFSET (SELECT floor(random() * (
+  SELECT count(*) FROM "users_with_ids"
+) + 1))
+LIMIT 1;
 
--- SELECT * FROM
---   (
---     SELECT (0 + trunc(random() * 1000)) AS "user_id"
---     FROM generate_series(1, 10000)
---     GROUP BY "user_id"
---   ) AS "gs1"
--- JOIN "users_with_ids" USING ("user_id")
--- LIMIT 1;
 
-CREATE OR REPLACE FUNCTION "test_offset_method"(
-  OUT ok BOOLEAN
-)
-AS $$
-DECLARE
-  max_offset INT;
-BEGIN
 
-  FOR i IN 0..6 LOOP
-    -- calculate the offset that we want to achieve
-    max_offset = 5 * POWER(10, i);
-    raise notice 'offset: %', max_offset; 
+
+
+-- CREATE OR REPLACE FUNCTION "test_offset_method"(
+--   OUT ok BOOLEAN
+-- )
+-- AS $$
+-- DECLARE
+--   max_offset INT;
+-- BEGIN
+
+--   FOR i IN 0..6 LOOP
+--     -- calculate the offset that we want to achieve
+--     max_offset = 5 * POWER(10, i);
+--     raise notice 'offset: %', max_offset; 
   
-    -- run the benchmark and log the result
-    INSERT INTO "test_results"
-    SELECT
-      CONCAT('random_offset_', max_offset) AS "test_name"
-    , "avg_duration" 
-    FROM benchmark_sql(FORMAT(
-      'SELECT * FROM "users_with_ids" OFFSET %s LIMIT 1',
-      max_offset
-    ), 100);
-  END LOOP;
-  ok = true;
-END; $$
-LANGUAGE plpgsql
-VOLATILE;
+--     -- run the benchmark and log the result
+--     INSERT INTO "test_results"
+--     SELECT
+--       CONCAT('random_offset_', max_offset) AS "test_name"
+--     , "avg_duration" 
+--     FROM benchmark_sql(FORMAT(
+--       'SELECT * FROM "users_with_ids" OFFSET %s LIMIT 1',
+--       max_offset
+--     ), 100);
+--   END LOOP;
+--   ok = true;
+-- END; $$
+-- LANGUAGE plpgsql
+-- VOLATILE;
 
-SELECT test_offset_method();
+-- SELECT test_offset_method();
 
 -- PREPARE "random_offset_10000" AS
 -- SELECT * FROM "users_with_ids" OFFSET 10000 LIMIT 1;
