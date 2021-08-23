@@ -29,24 +29,25 @@ LIMIT 1;
 
 Well, there are 2 reasons:
 
-1. You get just 1 row, if you want more, you must re-run the query
-2. The performances quickly deteriorates with the size of the table
-
-**bonus reason:** Running `SELECT COUNT(*)` on a big table sucks in performances!
+1. you get just 1 row, if you want more, you must re-run the query
+2. the performances deteriorates exponentially
+3. _(bonus reason) Running `SELECT COUNT(*)` on a big table sucks_
 
 This chart show the execution time of the query in a table of 5 million rows. By incrementing the offset range **the performances deteriorates exponentially**.
 
 
-[<img src="./images/the-offset-method.png" width="500" alt="The OFFSET method">](https://docs.google.com/spreadsheets/d/e/2PACX-1vSnAnSugZhCOFeqEf4U59EW2LfVuMcWFmHcjDQ5ehfVB2zh2X03J0z21RpgZtNpEcEC_Jojji1YjKL8/pubhtml?gid=0&single=true)
+[<img src="./images/the-offset-method.png" width="500" alt="The OFFSET method">](https://docs.google.com/spreadsheets/d/e/2PACX-1vSnAnSugZhCOFeqEf4U59EW2LfVuMcWFmHcjDQ5ehfVB2zh2X03J0z21RpgZtNpEcEC_Jojji1YjKL8/pubhtml)
 
 **👉 This method is viable ONLY IF:**
 
-1. You have a few thousands lines in the table
-2. You are only interested in 1 single row
+1. you have a few thousands lines in the table
+2. you are only interested in 1 single row
 
 ---
 
 ## The Easiest Way
+
+PostgreSQL offers an incredibly simple way to scramble the order of any query's results:
 
 ```sql
 SELECT * FROM "my_table"
@@ -54,15 +55,76 @@ ORDER BY random()
 LIMIT 1;
 ```
 
+This way, you don't only get one random row. You can actually **get any amount of random rows** just by tweaking the `LIMIT` parameter!
+
+**This is almost too good to be true!**
+
+And you're right my friend. Things are not so easy as this method also suffer an exponential decrease in performance with larger tables:
+
+[<img src="./images/order-by-random.png" width="500" alt="The ORDER BY RANDOM method">](https://docs.google.com/spreadsheets/d/e/2PACX-1vSnAnSugZhCOFeqEf4U59EW2LfVuMcWFmHcjDQ5ehfVB2zh2X03J0z21RpgZtNpEcEC_Jojji1YjKL8/pubhtml)
+
+**👉 This method is viable WHEN:**
+
+1. you have a few thousands lines in the table
+2. you need more than one random row
+
+---
+
 ## The Smart Way
+
+Of course there is a **smart way to select one or more random rows** from a large table. But it comes with some logic and some conditions:
+
+1. The table needs to have a contiguous numeric index (a `SERIAL` field would do great)
+2. There should be no gaps (or just few gaps) in such index
+3. You need to retrieve a relatively small randomized portion of the entire dataset
+
+> All those conditions are generally met by most tables from which we don't `DELETE` too much. And even so, we could add an additional serial field that we periodically purge by dropping and re-adding it as a batch job.
+
+The following query picks 10 random rows from a table of `9999` rows, which `id` column has a contiguous space `1-9999`.
 
 ```sql
 SELECT * FROM
   (
-    SELECT (0 + trunc(random() * 1000)) AS "user_id"
-    FROM generate_series(1, 10000)
-    GROUP BY "user_id"
+    SELECT (0 + trunc(random() * 9999)) AS "id"
+    FROM generate_series(1, 100)
+    GROUP BY "id"
   ) AS "gs1"
-JOIN "users_with_ids" USING ("user_id")
-LIMIT 1;
+JOIN "my_table" USING ("id")
+LIMIT 10;
 ```
+
+First, we generate a list of random numbers who's value **could be** an existing id in the target table:
+
+```sql
+SELECT (0 + trunc(random() * 9999)) AS "id"
+FROM generate_series(1, 100)
+GROUP BY "id"
+```
+
+> 👉 The `GROUP BY` clause will help removing duplicates!
+
+Then we `JOIN` that list with the real data in the table. Any random number that doesn't match with an existing `id` will be automatically removed.
+
+Eventually, we pick our 10 random rows.
+
+**Question: why do we generate 100 random ids, if we only want 10?**  
+I'm glad you asked! There are 2 reasons:
+
+1. When we generate random number, we could esily generate duplicates. With the `GROUP BY` clause we make sure those duplicates are removed, but we will end up with less than 100 random numbers, especially when we play with big numbers!
+2. When we `JOIN` the random number with the data in the table, we can have some mismatch as well, especially if there are gaps in the `id` column values
+
+All in all, we need to account for **duplicates** and **gaps** so we need to start with a generated list of random number that is greater than the amount of random rows that we want to get.
+
+### When to use this approach?
+
+- big tables
+
+### When NOT to use this approach?
+
+- small tables
+
+
+[<img src="./images/randomized-ids.png" width="500" alt="The RANDOMIZED IDS method">](https://docs.google.com/spreadsheets/d/e/2PACX-1vSnAnSugZhCOFeqEf4U59EW2LfVuMcWFmHcjDQ5ehfVB2zh2X03J0z21RpgZtNpEcEC_Jojji1YjKL8/pubhtml)
+
+https://www.gab.lc/articles/bigdata_postgresql_order_by_random/
+https://www.redpill-linpro.com/techblog/2021/05/07/getting-random-rows-faster.html

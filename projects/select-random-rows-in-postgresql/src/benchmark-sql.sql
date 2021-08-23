@@ -1,4 +1,4 @@
-DROP FUNCTION IF EXISTS benchmark_sql ( text, int);
+DROP FUNCTION IF EXISTS benchmark_sql (TEXT, INT);
 CREATE OR REPLACE FUNCTION benchmark_sql (
   PAR_sql TEXT
 , PAR_rep INT
