@@ -24,7 +24,6 @@ INSERT INTO "run_settings" VALUES ('{
   , 10000000
   , 20000000
   , 30000000
-
   , 40000000
   , 50000000
   ],
@@ -172,7 +171,7 @@ BEGIN
       SELECT * FROM
         (
           SELECT (0 + trunc(random() * %s)) AS "user_id"
-          FROM generate_series(1, 25)
+          FROM generate_series(1, 1)
           GROUP BY "user_id"
         ) AS "gs1"
       JOIN "users_with_ids" USING ("user_id")
@@ -185,14 +184,34 @@ LANGUAGE plpgsql
 VOLATILE;
 
 
-SELECT test_offset_method();
-SELECT test_order_by_random_method();
-SELECT * FROM test_random_ids_method();
+-- SELECT test_offset_method();
+-- SELECT test_order_by_random_method();
+SELECT test_random_ids_method();
 
 
 
+SELECT * FROM ( SELECT (0 + trunc(random() * 50000000)) AS "user_id" FROM generate_series(1, 1) GROUP BY "user_id" ) AS "gs1" JOIN "users_with_ids" USING ("user_id") LIMIT 1;
 
 
+select * from "users_with_ids" 
+where "user_id" in (
+  SELECT (0 + trunc(random() * 50000000)) AS "user_id" 
+  FROM generate_series(1, 1)
+  GROUP BY "user_id"
+)
+limit 1;
+
+select * from "users_with_ids" 
+where "user_id" in (
+  SELECT (0 + trunc(random() * 50000000)) AS "user_id" 
+)
+limit 1;
+
+select * from "users_with_ids" 
+where "user_id" in (
+  29941252
+)
+limit 1;
 
 
 
