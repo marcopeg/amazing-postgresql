@@ -66,3 +66,6 @@ fill:
 
 run:
 	@docker exec -i $(pg_name) psql -U postgres test-db < ./run.sql
+
+run1:
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./run1.sql

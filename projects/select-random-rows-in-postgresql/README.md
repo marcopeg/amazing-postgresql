@@ -1,7 +1,24 @@
 # Select Random Rows in PostgreSQL
 
-There are a few posts on StackOverflow that try to solve the "pick a random row" from a PostgreSQL table.
-Here are a few considerations and a few tests around it.
+There are [a few posts on StackOverflow](https://stackoverflow.com/questions/8674718/best-way-to-select-random-rows-postgresql) that try to solve the **pick a random row from a PostgreSQL table**. 
+
+Out of my research, I've identified 3 main strategies:
+
+- [The Dumbest Way (blue)](#the-dumbest-way)
+- [The Easiest Way (red)](#the-easiest-way)
+- [The Smart Way (yellow)](#the-smart-way)
+
+Just to spoil the rest of this article, here is the performance chart that I've built by seeding an empty PostgreSQL instance with a frowing number of rows:
+
+![Full Dataset Results](./images/ec2-t3a-medium-full-dataset.png)
+
+On the vertical axis I've mesured the execution time to get 1 random row out of a table. On the horizontal axis I've measured the table's rows count in thousands of rows. It goes from 50k to 50M rows.
+
+Unsurprisingly, **all the methods are equally fast with small datasets**.  
+The real difference shows when the data grows.
+
+> 👉 That's why is so desperately important to always [test your schema and queries with massive amount of randomly generated data](../../testing/data-seeding-in-postgresql)!
+
 
 ---
 
@@ -25,7 +42,7 @@ OFFSET (SELECT floor(random() * (
 LIMIT 1;
 ```
 
-**So why is that the dumbert way?**
+**So why is that the DUMBEST way?**
 
 Well, there are 2 reasons:
 
@@ -57,9 +74,11 @@ LIMIT 1;
 
 This way, you don't only get one random row. You can actually **get any amount of random rows** just by tweaking the `LIMIT` parameter!
 
-**This is almost too good to be true!**
+> **This is almost too good to be true!**.  
+> And you're right my friend.   
+> You are right.
 
-And you're right my friend. Things are not so easy as this method also suffer an exponential decrease in performance with larger tables:
+Things are not so easy as this method also suffer an exponential decrease in performance with larger tables:
 
 [<img src="./images/order-by-random.png" width="500" alt="The ORDER BY RANDOM method">](https://docs.google.com/spreadsheets/d/e/2PACX-1vSnAnSugZhCOFeqEf4U59EW2LfVuMcWFmHcjDQ5ehfVB2zh2X03J0z21RpgZtNpEcEC_Jojji1YjKL8/pubhtml)
 
