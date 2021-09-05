@@ -8,10 +8,12 @@ pg_name?=test-db
 pg_password?=postgres
 pg_version?=13.2
 pg_data?=.docker-data
+scale?=1
 
 start:
 	@echo "Starting Postgres..."
 	@mkdir -p $(CURDIR)/$(pg_data)
+	@touch .env
 	@docker build -t pgtap ../../testing/unit-tests/pgtap
 	@docker run --rm -d \
 		--name $(pg_name) \
@@ -61,3 +63,11 @@ test: reset test-only
 	
 seed: reset
 	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed.sql
+
+
+stress: stop schema
+	@touch .env
+	@rm -rf $(CURDIR)/$(pg_data)/pg
+	@docker-compose up -d postgres
+	@docker-compose up --scale producer=${scale} producer
+	@docker-compose up consumer

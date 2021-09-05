@@ -19,7 +19,7 @@ DECLARE
   VAR_r1 RECORD;
   VAR_r2 RECORD;
 BEGIN
-  PERFORM log_event('[{"a": 1}, {"a": 2}]');
+  PERFORM log_events('[{"a": 1}, {"a": 2}]');
   SELECT * INTO VAR_r1 FROM "events_log" LIMIT 1;
   SELECT * INTO VAR_r2 FROM "events_log" OFFSET 1 LIMIT 1;
   result = VAR_r2.etag > VAR_r1.etag;

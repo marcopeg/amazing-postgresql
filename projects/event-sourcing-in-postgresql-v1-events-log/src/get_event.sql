@@ -9,6 +9,7 @@ BEGIN
   RETURN QUERY
   SELECT * FROM "events_log"
   WHERE "etag" > PAR_lastEtag
+  ORDER BY etag ASC
   LIMIT PAR_limit;
 END; $$
 LANGUAGE plpgsql;

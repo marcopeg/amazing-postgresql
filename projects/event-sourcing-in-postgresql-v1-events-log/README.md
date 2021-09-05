@@ -184,6 +184,11 @@ By design, we can scale the data-producers almost indefinitely, but we will have
 - The consumer will keep the `MAX(etag(X) - etag(X-1))` and this value must be 1 to guarantee that all the messages have been queued without any conflict
 - The resulting sum of all the messages must equal to: `PRODUCERS_SCALE * PRODUCERS_LIMIT`
 
+| scale | insert_batch | insert_loops | tot_rows | lapsed_time |
+| ----: | -----------: | -----------: | -------: | ----------: |
+| 5     | 1000         | 10           | 50000    | 22761       | 
+| 5     | 5000         | 10           | 250000   | 10722      | 
+
 ---
 
 ## Next Steps
