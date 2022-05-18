@@ -68,34 +68,38 @@ A first approach might be to use numbers to sort out the tasks execution order.
 
 ```sql
 CREATE TABLE "queue_v1" (
-  "id" SERIAL PRIMARY KEY,
-  "payload" JSONB
+  "payload" JSONB,
+  "task_id" SERIAL PRIMARY KEY
 );
 ```
 
-> **NOTE:** using `SERIAL` as TaskID yelds roughly 6 tasks/second for about 10 years. Which is already longer than most startup would last.
+> 👉 using `SERIAL` as TaskID yelds roughly 6 tasks/second for about 10 years. Which is already longer than most startup would last.
 >
 > Switching to `BIGSERIAL` yelds 1 million tasks a second for about 2 thousands years.
 >
 > It's more than IKEA needs to count their screws.
 
-### Appending New Tasks
+## Appending New Tasks
 
 Inserting tasks is trivial:
 
 ```sql
-INSERT INTO "queue_v1" ("payload")
+INSERT INTO "queue_v1"
 VALUES ('{"name": "my task"}')
 RETURNING *;
 ```
 
-### Data Ingestion Rates
+> 👉 In this query we skip the field names declaration.
+>
+> This is possible because we set `payload` as first field in the data structure. That was a choice made on purpose 😎.
+
+## Data Ingestion Rates
 
 We can seed some large amount of tasks by combining this query with `generate_series`:
 
 ```sql
-INSERT INTO "queue_v1" ("payload")
-SELECT json_build_object('value', "t") AS "payload"
+INSERT INTO "queue_v1"
+SELECT json_build_object('value', "t")
 FROM generate_series(1, 1000000) AS "t"
 RETURNING *;
 ```
@@ -123,7 +127,13 @@ Here is a very empirical dataset for inserting 1M tasks each time on my Mac. It'
 
 👉 Once again, I wouldn't use SQL if massive data ingestion rates must be guaranteed, but numbers into the thousands of tasks/s should fit way above 80% of the use cases. Pareto wins!
 
-### Consuming The Queue
+- What does MASSIVE data ingestion mean to you?
+- What does MASSIVE data ingestion mean to your project?
+- How do you estimate your data ingestion peaks?
+
+> 🧐 Is it worth to use Kafka or SQL just because you don't know the ansers to the questions above?
+
+## Consuming The Queue
 
 Consuming the queue means 2 things:
 
@@ -133,12 +143,132 @@ Consuming the queue means 2 things:
 ```sql
 -- Pick a task:
 SELECT * FROM "queue_v1"
-ORDER BY "id" ASC
+ORDER BY "task_id" ASC
 LIMIT 1;
 
 -- Complete a task:
 DELETE FROM "queue_v1"
-WHERE "id" = 1
+WHERE "task_id" = 1
+RETURNING *;
+```
+
+This is quite straightforward, right?
+
+> And it works perfectly fine if we consume the queue one task at the time!
+
+## Distributed Processing
+
+But queues exists as so to tap into the wonders of distributed processing:
+
+> DISTRIBUTE PROCESSING:
+>
+> - different processes
+> - running on different servers
+> - process multiple tasks
+> - in parallel
+
+That simply means that many tasks should be "picked" before the first one gets completed.
+
+🚧 Here our current solution breaks! 🚧
+
+> If you run the task picking query multiple times... you always get the same task!
+
+## Flag the Active Tasks
+
+Somehow, it becomes necessary to mark a task as "work in progress" after picking it up.
+
+Here is a second version of our queue data structure. Note that we keep the trick of setting `payload` as first field in the list!
+
+```sql
+CREATE TABLE IF NOT EXISTS "public"."queue_v2" (
+  "payload" JSONB,
+  "is_available" BOOLEAN DEFAULT TRUE,
+  "task_id" BIGSERIAL PRIMARY KEY
+);
+```
+
+And we will use the field `is_available` to figure out whether the task is available for processing or not.
+
+Appending a new task in the queue remains as trivial as it was before:
+
+```sql
+INSERT INTO "queue_v2"
+VALUES ('{"name": "my task"}')
+RETURNING *;
+```
+
+But we need a bit more effort with the _data seeding_ as we want to randomize the `is_available` value, as so to simulate some tasks that have already been processed:
+
+```sql
+INSERT INTO "queue_v2"
+SELECT
+  json_build_object('value', "t"),
+  random() > 0.5
+FROM generate_series(1, 1000000) AS "t"
+RETURNING *;
+```
+
+Now we can refine our **task picking query** as to target only tasks that are available for processing:
+
+```sql
+SELECT * FROM "queue_v2"
+WHERE "is_available" = true
+ORDER BY "task_id" ASC
+LIMIT 1;
+```
+
+But this is not yet enough. This query still don't flag the task as "picked".
+
+The whole process of processing a task should look like:
+
+1. Pick a task
+2. Flag as "work in progress"
+3. Do some work
+4. Delete the task
+
+Flagging the task is a simple `UPDATE` statement:
+
+```sql
+UPDATE "queue_v2"
+SET "is_available" = false
+WHERE "task_id" = 1
+RETURNING *;
+```
+
+We can also refine this query as so to avoid useless updates on tasks that are already flagged:
+
+```sql
+UPDATE "queue_v2"
+SET "is_available" = false
+WHERE "task_id" = 1
+  AND "is_available" = true
+RETURNING *;
+```
+
+👉 This works much better than before, but it is **still prone to concurrency errors**.
+
+> But there is a gap between the `SELECT` and `UPDATE` statements, and within this gap, two consumers may pick the same task.
+
+## FOR UPDATE SKIP LOCKED
+
+Nice article:  
+https://www.2ndquadrant.com/en/blog/what-is-select-skip-locked-for-in-postgresql-9-5/
+
+The following statement uses the magic spell `FOR UPDATE SKIP LOCKED`, and a sub-query, to perform points n.1 and n.2 of the previoud list **atomically**:
+
+1. Pick a task
+2. Flag as "work in progress"
+
+```sql
+UPDATE "queue_v2"
+SET "is_available" = false
+WHERE "task_id" = (
+  SELECT "task_id"
+  FROM "queue_v2"
+  WHERE "is_available" = true
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+)
 RETURNING *;
 ```
 
