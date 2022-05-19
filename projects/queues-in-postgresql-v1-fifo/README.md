@@ -16,11 +16,16 @@ For sake of simplicity we will assume as follow:
 - [Prerequisites](#prerequisites)
 - [Run the Project](#run-the-project)
 - [A Simple Data Schema](#a-simple-data-schema)
-- [BIGSERIAL as Etag](#bigserial-as-etag)
-- [Append New Events](#append-new-events)
-- [Read Events](#read-events)
-- [Stress Test With Big Data](#stress-test-with-big-data)
-- [Next Steps](#next-steps)
+- [Appending New Tasks](#appending-new-tasks)
+- [Data Ingestion Rates](#data-ingestion-rates)
+- [Consuming The Queue](#consuming-the-queue)
+- [Distributed Processing](#distributed-processing)
+- [Flag the Active Tasks](#flag-the-active-tasks)
+- [FOR UPDATE SKIP LOCKED](#for-update-skip-locked)
+- [Batching The Execution](#batching-the-execution)
+- [Optimizing For Speed](#optimizing-for-speed)
+- [The True Cost of Speed](#the-true-cost-of-speed)
+- [Fully Cached Indexes](#fully-cached-indexes)
 
 ---
 
@@ -56,6 +61,8 @@ make seed
 make stop
 ```
 
+---
+
 ## A Simple Data Schema
 
 A first approach might be to use numbers to sort out the tasks execution order.
@@ -79,6 +86,8 @@ CREATE TABLE "queue_v1" (
 >
 > It's more than IKEA needs to count their screws.
 
+---
+
 ## Appending New Tasks
 
 Inserting tasks is trivial:
@@ -92,6 +101,8 @@ RETURNING *;
 > 👉 In this query we skip the field names declaration.
 >
 > This is possible because we set `payload` as first field in the data structure. That was a choice made on purpose 😎.
+
+---
 
 ## Data Ingestion Rates
 
@@ -133,6 +144,8 @@ Here is a very empirical dataset for inserting 1M tasks each time on my Mac. It'
 
 > 🧐 Is it worth to use Kafka or SQL just because you don't know the ansers to the questions above?
 
+---
+
 ## Consuming The Queue
 
 Consuming the queue means 2 things:
@@ -156,6 +169,8 @@ This is quite straightforward, right?
 
 > And it works perfectly fine if we consume the queue one task at the time!
 
+---
+
 ## Distributed Processing
 
 But queues exists as so to tap into the wonders of distributed processing:
@@ -172,6 +187,8 @@ That simply means that many tasks should be "picked" before the first one gets c
 🚧 Here our current solution breaks! 🚧
 
 > If you run the task picking query multiple times... you always get the same task!
+
+---
 
 ## Flag the Active Tasks
 
@@ -249,6 +266,8 @@ RETURNING *;
 
 > But there is a gap between the `SELECT` and `UPDATE` statements, and within this gap, two consumers may pick the same task.
 
+---
+
 ## FOR UPDATE SKIP LOCKED
 
 The following statement uses the magic spell `FOR UPDATE SKIP LOCKED`, and a sub-query, to perform points n.1 and n.2 of the previous list **atomically**:
@@ -284,6 +303,8 @@ WHERE "task_id" = (
 RETURNING *;
 ```
 
+---
+
 ## Batching The Execution
 
 Let's start tapping into **performance optimiziations**.
@@ -305,6 +326,8 @@ WHERE "task_id" IN (
 )
 RETURNING *;
 ```
+
+---
 
 ## Optimizing For Speed
 
@@ -434,6 +457,8 @@ The relevant part is that in the second example, we read:
 
 > Always keep in mind that indexes should be use to EXCLUDE DATA from your sequential scans.
 
+---
+
 ## The True Cost of Speed
 
 😍 Waaaait, are indexes so awesome?  
@@ -478,6 +503,8 @@ As you can see, there are 2 costs factors in the solution we presented:
 > Things may change dramatically if you consider using `UUIDs` instead. Always keep an eye on the data size!
 
 Indexes are great, Partial Indexes are better, but always use them responsibly 😎.
+
+---
 
 ## Fully Cached Indexes
 
