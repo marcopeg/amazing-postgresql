@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(10);
+SELECT plan(12);
 
 -- Insert one task:
 TRUNCATE "queue_v2" RESTART IDENTITY CASCADE;
@@ -103,6 +103,7 @@ WHERE "task_id" = (
   SELECT "task_id"
   FROM "queue_v2"
   WHERE "is_available" = true
+  ORDER BY "task_id" ASC
   FOR UPDATE SKIP LOCKED
   LIMIT 1
 )
@@ -121,6 +122,60 @@ SELECT results_ne(
   'pick_and_flag',
   $$VALUES ( 1::BIGINT, '"task1"'::TEXT)$$,
   'It should NOT pick and flag the first task again'
+);
+
+-- Remove a processed task:
+TRUNCATE "queue_v2" RESTART IDENTITY CASCADE;
+INSERT INTO "queue_v2"
+SELECT json_build_object('name', CONCAT('task', "t"))
+FROM generate_series(1, 10) AS "t";
+
+PREPARE "remove_task" AS
+DELETE FROM "queue_v2"
+WHERE "task_id" = (
+  SELECT "task_id"
+  FROM "queue_v2"
+  WHERE "task_id" = 1
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+)
+RETURNING 
+  "task_id", 
+  ("payload"->'name')::TEXT
+;
+
+SELECT results_eq(
+  'remove_task',
+  $$VALUES ( 1::BIGINT, '"task1"'::TEXT)$$,
+  'It should be able to remove a specific task'
+);
+
+-- Batch tasks
+TRUNCATE "queue_v2" RESTART IDENTITY CASCADE;
+INSERT INTO "queue_v2"
+SELECT json_build_object('name', CONCAT('task', "t"))
+FROM generate_series(1, 10) AS "t";
+
+PREPARE "batch_task" AS
+UPDATE "queue_v2"
+SET "is_available" = false
+WHERE "task_id" IN (
+  SELECT "task_id"
+  FROM "queue_v2"
+  WHERE "is_available" = true
+  ORDER BY "task_id" ASC
+  FOR UPDATE SKIP LOCKED
+  LIMIT 2
+)
+RETURNING 
+  "task_id", 
+  ("payload"->'name')::TEXT
+;
+
+SELECT results_eq(
+  'batch_task',
+  $$VALUES ( 1::BIGINT, '"task1"'::TEXT), ( 2::BIGINT, '"task2"'::TEXT)$$,
+  'It should be able to pick and flag a batch of tasks'
 );
 
 SELECT * FROM finish();
