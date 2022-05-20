@@ -804,14 +804,14 @@ Unfortunately, we quickly see a **DRAMATIC PERFORMANCE DROP** 😒.
 | 10   |  3ms     |
 | 10k  |  7ms     |
 | 100k |  270ms   |
-| 1M   |  3.6sms  |
+| 1M   |  3.6s    |
 
 By now, you would think: "let's just add a Partial Index"!
 
 ```sql
 CREATE INDEX "queue_v4_pick_idx"
-ON "queue_v3" ( "next_interval" ASC )
-WHERE ( "next_interval" <= now() );
+ON "queue_v4" ( "next_iteration" ASC )
+WHERE ( "next_iteration" <= now() );
 ```
 
 Unfortunately (get used to "unfortunately"), TIME can not be partially indexed, as it constantly change.
