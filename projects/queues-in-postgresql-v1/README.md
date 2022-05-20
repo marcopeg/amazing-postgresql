@@ -1,4 +1,4 @@
-# Queues in PostgreSQL - FIFO
+# Queues in PostgreSQL
 
 This project explores a minimalist implementation of a **Queue based on PostgreSQL**.
 
