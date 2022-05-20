@@ -26,6 +26,10 @@ For sake of simplicity we will assume as follow:
 - [Optimizing For Speed](#optimizing-for-speed)
 - [The True Cost of Speed](#the-true-cost-of-speed)
 - [Fully Cached Indexes](#fully-cached-indexes)
+- [Manging Failed Tasks](#manging-failed-tasks)
+  - [Worker Keep Alive](#worker-keep-alive)
+  - [Task Timeout](#task-timeout)
+  - [Time Based Execution](#timestamp-execution-plan)
 
 ---
 
@@ -549,7 +553,11 @@ When a worker completes its work, it will eventually `DELETE` the task as so to 
 
 Unfortunately, with our current implementation, the task will not be visible to other workers until the `is_available` flag gets reset to true. But we have no available information _WHEN_ this should happen.
 
-Here we tap into the mighty world of **FAILURE MANAGEMENT**, and we have a few possible ways to go about it.
+Here we tap into the mighty world of **FAILURE MANAGEMENT**, and we have a few possible ways to go about it:
+
+- [Worker Keep Alive](#worker-keep-alive)
+- [Task Timeout](#task-timeout)
+- [Time Based Execution](#timestamp-execution-plan)
 
 ### Worker Keep Alive
 
@@ -733,9 +741,125 @@ Execution Time: 0.143 ms
 
 And the query keeps running in just under 2ms to recover 1 task, and under 20ms to recover 100.
 
-### Time Based Execution
+### Timestamp Execution Plan
 
-1. We insert a task in the queue
+This approach introduces a radical change, for we are going to use a `timestamp` to manage the different states of a task:
+
+- if `ts <= now()` the task _should be processed_, and it is available
+- if `ts > now()` the task is just planned for execution and it is NOT available
+
+```sql
+CREATE TABLE IF NOT EXISTS "public"."queue_v4" (
+  "payload" JSONB,
+  "next_iteration" TIMESTAMP NOT NULL DEFAULT now(),
+  "task_id" BIGSERIAL PRIMARY KEY
+);
+```
+
+This little schema has HUGE implications:
+
+1. We can insert tasks in the queue at any point in time  
+   <small>the "queue" becomes a "calendar"</small>
+2. Flagging a task as "under execution" is achieved by modifying the `next_iteration`
+3. Managing an _execution timeout_ is achieved through a smart setting of `next_iteration`
+4. The recovery of timed-out tasks is _AUTOMATIC_ as time keeps moving!
+
+The pick-up query becomes:
+
+```sql
+UPDATE "queue_v4"
+SET "next_iteration" = now() + INTERVAL '10s'
+WHERE "task_id" = (
+  SELECT "task_id"
+  FROM "queue_v4"
+  WHERE "next_iteration" <= now()
+  ORDER BY "next_iteration" ASC
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+) RETURNING *;
+```
+
+This query will pick one single task, setting a timeout of 10 seconds for its execution.  
+Try running again after that amount of time, the task will be picked up again!
+
+😎 **TO GOOD TO BE TRUE** 😎
+
+Let's populate our queue with some randomic tasks:
+
+```sql
+INSERT INTO "queue_v4" ("payload", "next_iteration")
+SELECT
+  json_build_object('name', CONCAT('Task', "t")),
+  CASE
+  	WHEN random() > 0.5 THEN now() - '10m'::INTERVAL * random()
+  	ELSE now() + '10s'::INTERVAL * random()
+  END
+FROM generate_series(1, 1000000) AS "t";
+```
+
+Unfortunately, we quickly see a **DRAMATIC PERFORMANCE DROP** 😒.
+
+| rows |  pick-up |
+| ---- | -------- |
+| 10   |  3ms     |
+| 10k  |  7ms     |
+| 100k |  270ms   |
+| 1M   |  3.6sms  |
+
+By now, you would think: "let's just add a Partial Index"!
+
+```sql
+CREATE INDEX "queue_v4_pick_idx"
+ON "queue_v3" ( "next_interval" ASC )
+WHERE ( "next_interval" <= now() );
+```
+
+Unfortunately (get used to "unfortunately"), TIME can not be partially indexed, as it constantly change.
+
+```Error
+ERROR:  functions in index predicate must be marked IMMUTABLE
+```
+
+> FUTURE NOWs live in the PAST
+
+But we can AT THE VERY LEAST build an index that helps keeping stuff in the proper order:
+
+```sql
+CREATE INDEX "queue_v4_pick_idx"
+ON "queue_v4" ( "next_iteration" ASC );
+```
+
+Here are the results... no comments...
+
+| rows |  pick-up | with index |
+| ---- | -------- | ---------- |
+| 10   |  3ms     | 3ms        |
+| 10k  |  7ms     | 3ms        |
+| 100k |  270ms   | 3ms        |
+| 1M   |  3.6s    | 4ms        |
+| 5M   |   42s    | 6ms        |
+| 10M  |   81s    | 6ms        |
+
+😎 **TO GOOD TO BE TRUE** 😎
+
+Indeed, those performances come with a cost: DISK SPACE!
+
+```sql
+SELECT
+  i.relname "Table Name",
+  indexrelname "Index Name",
+  pg_size_pretty(pg_total_relation_size(relid)) As "Total Size",
+  pg_size_pretty(pg_indexes_size(relid)) as "Total Size of all Indexes",
+  pg_size_pretty(pg_relation_size(relid)) as "Table Size",
+  pg_size_pretty(pg_relation_size(indexrelid)) "Index Size",
+  reltuples::bigint "Estimated table row count"
+FROM pg_stat_all_indexes i JOIN pg_class c ON i.relid=c.oid
+WHERE i.relname='queue_v4';
+```
+
+With 10M rows, the table size is up to `730Mb`, but the indexes are taking another `426Mb` for a grand total of `1.2Gb`.
+
+🔥 **The query performance costs us a 30% increase in disk size, and disk I/O.** 🔥
 
 ---
 
