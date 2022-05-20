@@ -39,7 +39,10 @@ schema:
 	clear
 	@echo "Building Project ..."
 	@mkdir -p $(CURDIR)/$(pg_data)
-	@cat $(CURDIR)/src/schema.sql \
+	@cat $(CURDIR)/src/schema_v1.sql \
+		   $(CURDIR)/src/schema_v2.sql \
+		   $(CURDIR)/src/schema_v3.sql \
+		   $(CURDIR)/src/schema_v4.sql \
 			 $(CURDIR)/src/append.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 

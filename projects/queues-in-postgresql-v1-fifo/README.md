@@ -538,6 +538,207 @@ And the difference is `Index Only Scan`. That means that the data table doesn't 
 
 ---
 
+## Manging Failed Tasks
+
+So far we use `is_available::boolean` to filter out tasks that are available for processing.
+And we flag them `is_available -> false` when a worker pick them up.
+
+When a worker completes its work, it will eventually `DELETE` the task as so to clean up the queue.
+
+🧐 **What happens if the worker throws while processing the task?** 🧐
+
+Unfortunately, with our current implementation, the task will not be visible to other workers until the `is_available` flag gets reset to true. But we have no available information _WHEN_ this should happen.
+
+Here we tap into the mighty world of **FAILURE MANAGEMENT**, and we have a few possible ways to go about it.
+
+### Worker Keep Alive
+
+1. we ask the worker to send a `keep alive` signal
+2. we flag the picked task with the worker's id
+3. we timeout the worker's `keep alive` and release the related tasks
+
+> 👉 This is the advanced mechanic usually employed by famous tools such as RabitMQ or Kafka.
+>
+> It works great, but **it requires an explicit SDK** as so to negotiate the WorkerID.
+
+### Task Timeout
+
+1. when we pick a task, we annotate the pick up date
+2. after a while, we reset tasks that are expired by an arbitrary timeout
+
+> This solution is very simple, but **it requires us to run a batch job** to release tasks that have been not completed in time.
+
+In order to achieve so, we can introduce a new column `picked_at` in our schema:
+
+```sql
+CREATE TABLE IF NOT EXISTS "public"."queue_v3" (
+  "payload" JSONB,
+  "is_available" BOOLEAN DEFAULT true,
+  "task_id" BIGSERIAL PRIMARY KEY,
+  "picked_at" TIMESTAMP
+);
+```
+
+This column should always contain _the last time that the task was picked by a worker_.
+
+The pick-up query should now evolve into:
+
+```sql
+UPDATE "queue_v3"
+SET "is_available" = false,
+    "picked_at" = now()
+WHERE ...
+```
+
+The thing is, I don't think it's a good idea to put this responsibility into the pick-up query: what if the engineer messes up with it?
+
+🔥 **Luckily, PostgreSQL offers great automation support through triggers** 🔥
+
+First, we can define a _TRIGGER FUNCTION_ that will update the `picked_at` information when needed:
+
+```sql
+CREATE OR REPLACE FUNCTION "queue_v3_picked_at"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW."is_available" = false AND
+     OLD."is_available" = true
+  THEN
+    NEW.picked_at = NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE 'plpgsql';
+```
+
+Then, we can associace such function to a _DATA EVENT_ in our queue table:
+
+```sql
+CREATE TRIGGER "queue_v3_picked_at"
+BEFORE UPDATE
+ON "queue_v3"
+FOR EACH ROW
+EXECUTE PROCEDURE "queue_v3_picked_at"();
+```
+
+> **NOTE:** `BEFORE UPDATE` triggers can manipulate the incoming data, and even perform data-validation with the purpose of failing the request.
+>
+> So much business logic can be moved from the Application Layer into the DB, achieving unbelievable performances at very little load price.
+
+The last piece of this implementation would be to recover tasks that have timeouted:
+
+```sql
+UPDATE "queue_v3"
+SET "is_available" = true
+WHERE "task_id" IN (
+  SELECT "task_id"
+  FROM "queue_v3"
+  WHERE "is_available" = false
+    AND "picked_at" < now() - INTERVAL '5s'
+  ORDER BY "picked_at" ASC
+  FOR UPDATE SKIP LOCKED
+) RETURNING *;
+```
+
+> **NOTE:** this query will attempt to recover ALL the timeouted tasks.
+
+It is a good idea to never run queries that target an entire dataset, for the execution time is unpredictable.
+
+I'd rather `LIMIT` the subquery as so to apply a ceiling to the possible updates, and then repeat my query until it returns zero rows. This way, the execution time would spread in time and reduce the workload on the machine.
+
+🧐 **What about recover performances?** 🧐
+
+Let's insert some randomic timeouted tasks in our db:
+
+```sql
+INSERT INTO "queue_v3" ("payload", "is_available", "picked_at")
+SELECT
+  json_build_object('name', CONCAT('Task', "t")),
+  random() > 0.99990,
+  now() - '10m'::INTERVAL * random()
+FROM generate_series(1, 1000000) AS "t";
+```
+
+We suddenly experience a DRAMATIC PERFORMANCE ISSUE with out recover query.
+
+> In my machine it goes up to 5s to recover one sigle task!
+
+That is because we want to recover the older tasks first:
+
+```sql
+ORDER BY "picked_at" ASC
+```
+
+You can test this out by running the `SELECT` part of the recovery query:
+
+```sql
+EXPLAIN ANALYZE
+SELECT "task_id"  FROM "queue_v3"
+WHERE "is_available" = false AND "picked_at" < now() - INTERVAL '5s'
+ORDER BY "picked_at" ASC
+LIMIT 1;
+```
+
+You get this huge plan:
+
+```
+Limit  (cost=19720.54..19720.66 rows=1 width=16) (actual time=3011.554..3016.628 rows=1 loops=1)
+  ->  Gather Merge  (cost=19720.54..116926.99 rows=833140 width=16) (actual time=3011.542..3016.604 rows=1 loops=1)
+        Workers Planned: 2
+        Workers Launched: 2
+        ->  Sort  (cost=18720.52..19761.94 rows=416570 width=16) (actual time=3001.399..3001.411 rows=1 loops=3)
+              Sort Key: picked_at
+              Sort Method: top-N heapsort  Memory: 25kB
+              Worker 0:  Sort Method: top-N heapsort  Memory: 25kB
+              Worker 1:  Sort Method: top-N heapsort  Memory: 25kB
+              ->  Parallel Seq Scan on queue_v3  (cost=0.00..16637.67 rows=416570 width=16) (actual time=0.011..1509.963 rows=333283 loops=3)
+                    Filter: ((NOT is_available) AND (picked_at < (now() - '00:00:05'::interval)))
+                    Rows Removed by Filter: 50
+Planning Time: 4.226 ms
+Execution Time: 3016.759 ms
+```
+
+But if you just remove the `ORDER BY` clause you get top knotch performances:
+
+```sql
+Limit  (cost=0.00..0.03 rows=1 width=8) (actual time=0.025..0.044 rows=1 loops=1)
+  ->  Seq Scan on queue_v3  (cost=0.00..26846.00 rows=999767 width=8) (actual time=0.015..0.020 rows=1 loops=1)
+        Filter: ((NOT is_available) AND (picked_at < (now() - '00:00:05'::interval)))
+Planning Time: 0.878 ms
+Execution Time: 0.123 ms
+```
+
+🤬 WTF?
+
+> We get this gigantic difference because we inserted 1M timeouted tasks with a randomic `picked_at` value.
+
+In reality, it would never be THAT BAD because timeouted tasks will always be more or less adjacent one to another at the top of the queue.
+
+Still, this is evidence of a performance bottleneck that we are able to fix with a _PARTIAL INDEX_:
+
+```sql
+CREATE INDEX "queue_v3_recover_idx"
+ON "queue_v3" ( "picked_at" ASC )
+WHERE ( "is_available" = false );
+```
+
+And now our recovery query plan turns out to be:
+
+```
+Limit  (cost=0.43..0.50 rows=1 width=16) (actual time=0.064..0.089 rows=1 loops=1)
+  ->  Index Scan using queue_v3_recover_idx on queue_v3  (cost=0.43..65853.80 rows=999767 width=16) (actual time=0.049..0.056 rows=1 loops=1)
+        Index Cond: (picked_at < (now() - '00:00:05'::interval))
+Planning Time: 0.168 ms
+Execution Time: 0.143 ms
+```
+
+And the query keeps running in just under 2ms to recover 1 task, and under 20ms to recover 100.
+
+### Time Based Execution
+
+1. We insert a task in the queue
+
+---
+
 [postgres]: https://www.postgresql.org/
 [docker]: https://www.docker.com/
 [make]: https://www.gnu.org/software/make/manual/make.html
