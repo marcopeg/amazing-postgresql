@@ -10,7 +10,11 @@ In particular, we will try to figure out a schema that can ingest plenty of comm
 
 - [Prerequisites](#prerequisites)
 - [Run the Project](#run-the-project)
-- [xx](#a-simple-data-schema)
+- [CQRS Annotation Hyper Table](#cqrs-annotation-hyper-table)
+  - [Insert a Command](#insert-a-command)
+  - [Commands Ingestion Rate](#commands-ingestion-rate)
+  - [Insert a Response](#insert-a-response)
+- [Integrity Check](#integrity-check)
 
 ---
 
@@ -50,20 +54,19 @@ make stop
 
 ## CQRS Annotation Hyper Table
 
-The first choice we make is to use a set of 2 tables for storing the full commant state:
+The first choice we make is to use a set of 2 tables for storing the full command state:
 
-- **Intention:** what is expected to happen ([v1_commands](./src/schema_v1.sql#4))
+- **Command:** what is expected to happen ([v1_commands](./src/schema_v1.sql#4))
 - **Response:** how did it go ([v1_responses](./src/schema_v1.sql#10))
 
 This way, the only operations that will ever by performed into such tables are:
 
 - **INSERT:** To propose commands and report status updates
-- **DELETES:** To manage data retention, and this is technically optional
+- **DELETE:** To manage data retention, and this is technically optional
 
 ### Insert a Command
 
-This operation is a standard `INSERT` statement.  
-It is non blocking and it will hardly fail.
+This operation is a standard `INSERT` statement, it is non blocking and it will hardly fail:
 
 ```sql
 INSERT INTO "v1_commands"
@@ -81,13 +84,13 @@ RETURNING *;
 
 ### Commands Ingestion Rate
 
-First, we clear any data from our table:
+First, we clear any data that may exist our table:
 
 ```sql
 TRUNCATE "v1_commands" RESTART IDENTITY CASCADE;
 ```
 
-Second, we need a seeding function that simulates some form of realistic data:
+Second, we run a seeding query that simulates some form of realistic data:
 
 ```sql
 INSERT INTO "v1_commands"
@@ -99,7 +102,7 @@ SELECT
         WHEN random() >= 0.5 THEN 'update'
         ELSE 'delete'
       END,
-  	'progressive_name', CONCAT('task', "t"),
+  	'cmd_target', CONCAT('task', "t"),
   	'random_value', random(),
   	'random_date',
       CASE
@@ -110,7 +113,7 @@ SELECT
 FROM generate_series(1, 1000000) AS "t";
 ```
 
-Now we can run this query a bounch of times, and collect stats on the execution time:
+Now we can run this query a bounch of times, and empirically collect stats on the execution time:
 
 |  Tot Rows |  Lapsed Time |  Inserts/sec |
 | --------- | ------------ | ------------ |
@@ -126,10 +129,18 @@ Now we can run this query a bounch of times, and collect stats on the execution 
 | 10M       | 44s          |  23k         |
 
 > **NOTE:** these numbers are only ment to give an understanding of the degrading performances.
->
+
+As you can see, on my Mac performances don't degrade so quickly.
+
+But of course, 10 million rows are not much data from PostgreSQL's perspective. We should run much more aggressive tests to get to the real bottleneck.
+
+Anyway, I'd like to point out that Facebook got to 13M requests per second. Facebook. If you reach 100w/s as stable flow, you are going to generate ~9M rows per day. It's not much.
+
 > I wouldn't suggest to use a SQL database for a system that has more than a few hundreds commands/s as a peak throughput!
 
 ### Insert a Response
+
+Responses are also quite easy inserts:
 
 ```sql
 INSERT INTO "v1_responses"
@@ -137,18 +148,18 @@ VALUES ( 1, '{"name":"foo"}' )
 RETURNING *;
 ```
 
-we can data seed some randomic data with:
+And we can data seed some randomic data so to stress our solution a bit with:
 
 ```sql
 INSERT INTO "v2_responses"
 SELECT
   floor(random()* (1000-1 + 1) + 1),
   json_build_object(
-  	'cmd_name',
+  	'status',
       CASE
-        WHEN random() >= 0.5 THEN 'insert'
-        WHEN random() >= 0.5 THEN 'update'
-        ELSE 'delete'
+        WHEN random() >= 0.5 THEN 'ok'
+        WHEN random() >= 0.5 THEN 'ko'
+        ELSE 'started'
       END,
   	'progressive_name', CONCAT('task', "t"),
   	'random_value', random(),
@@ -161,6 +172,8 @@ SELECT
 FROM generate_series(1, 1000000) AS "t";
 ```
 
+Run this a couple of times, and here are my results:
+
 |  Tot Rows |  Lapsed Time |  Inserts/sec |
 | --------- | ------------ | ------------ |
 | 1M        | 34s          |  29k         |
@@ -170,6 +183,8 @@ FROM generate_series(1, 1000000) AS "t";
 | 5M        | 51s          |  20k         |
 
 It yields an average of 22.6K inserts per second.
+
+---
 
 ## Integrity Check
 
