@@ -52,6 +52,7 @@ schema:
 		   $(CURDIR)/src/schema_v5.sql \
 		   $(CURDIR)/src/schema_v6.sql \
 		   $(CURDIR)/src/schema_v7.sql \
+		   $(CURDIR)/src/schema_v8.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 
 reset: schema
@@ -79,9 +80,11 @@ seed-only:
 	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/${pg_seed}
 
 
-stress: stop schema
-	@touch .env
-	@rm -rf $(CURDIR)/$(pg_data)/pg
-	@docker-compose up -d postgres
-	@docker-compose up --scale producer=${scale} producer
-	@docker-compose up consumer
+stress: reset
+	clear
+	@echo "Stressing Project ..."
+	@mkdir -p $(CURDIR)/$(pg_data)
+	@cat $(CURDIR)/seed/seed_v7.sql \
+		   $(CURDIR)/seed/seed_v8.sql \
+	> $(CURDIR)/$(pg_data)/init-schema.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < $(CURDIR)/$(pg_data)/init-schema.sql

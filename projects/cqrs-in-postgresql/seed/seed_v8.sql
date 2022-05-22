@@ -7,21 +7,21 @@ DECLARE
   _end_ts           timestamptz;
   _timing           numeric;
   _cmd_loops        numeric = 20;
-  _cmd_batch        numeric = 10000;
+  _cmd_batch        numeric = 100000;
   _cmd_tenants      numeric = 5000;
   _rows_before      numeric;
   _rows_after       numeric;
   _rows_expected    numeric;
 BEGIN
 
-  SELECT count(*) INTO _rows_before FROM "v7_commands";
+  SELECT count(*) INTO _rows_before FROM "v8_commands";
 
   FOR _loop_count IN 1.._cmd_loops LOOP
-    RAISE INFO 'v7 - Ingest % new rows; run: % of %;', _cmd_batch, _loop_count, _cmd_loops;
+    RAISE INFO 'v8 - Ingest % new rows; run: % of %;', _cmd_batch, _loop_count, _cmd_loops;
 
     -- Run the query
     _start_ts := clock_timestamp();
-    INSERT INTO "v7_commands" SELECT
+    INSERT INTO "v8_commands" SELECT
       (SELECT (ARRAY(SELECT concat('tenant-', t) FROM generate_series(1, _cmd_tenants) AS "t"))[floor(random() * _cmd_tenants + 1)] where "t" = "t"),
       json_build_object(
         'cmd_name', CASE WHEN random() >= 0.5 THEN 'insert' WHEN random() >= 0.5 THEN 'update' ELSE 'delete' END,
@@ -33,19 +33,19 @@ BEGIN
 
     -- Build stats
     COMMIT;
-    SELECT count(*) INTO _rows_after FROM "v7_commands";
+    SELECT count(*) INTO _rows_after FROM "v8_commands";
 
     _timing   := round(1000 *(extract(epoch FROM _end_ts - _start_ts)));
     _rows_expected = _rows_before + _cmd_batch;
 
     RAISE INFO 
-      'v7 - Lapsed: %;  Ins/s: %'
+      'v8 - Lapsed: %;  Ins/s: %'
       , _timing
       , round((_cmd_batch / _timing * 1000))
     ;
 
     INSERT INTO "stats" VALUES (
-      'commands_ingest_v7',
+      'commands_ingest_v8',
       _timing,
       json_build_object(
         'loop_count', _loop_count,
@@ -81,4 +81,4 @@ SELECT
 FROM "stats"
 GROUP BY "query";
 
--- SELECT * FROM "v7_commands";
+-- SELECT * FROM "v8_commands";
