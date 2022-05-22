@@ -507,3 +507,16 @@ https://severalnines.com/database-blog/guide-partitioning-data-postgresql
 | 7M        | 67s          |  14.9k       |
 | 8M        | s            |  k           |
 | 9M        | s            |  k           |
+
+SELECT
+"query",
+round(sum(("payload" -> 'rows_after')::integer) / 1000000) AS "tot_rows_m",
+sum(("payload" -> 'rows_after')::integer) AS "tot_rows",
+round(avg("duration_ms")) AS "duration_ms_avg",
+round(min("duration_ms")) AS "duration_ms_min",
+round(max("duration_ms")) AS "duration_ms_max",
+round(avg(("payload" -> 'insert_per_sec')::integer)) AS "ins_s_avg",
+round(min(("payload" -> 'insert_per_sec')::integer)) AS "ins_s_min",
+round(max(("payload" -> 'insert_per_sec')::integer)) AS "ins_s_max"
+FROM "stats"
+GROUP BY "query";
