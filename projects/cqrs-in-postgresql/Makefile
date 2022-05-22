@@ -8,6 +8,7 @@ pg_name?=test-db
 pg_password?=postgres
 pg_version?=13.2
 pg_data?=.docker-data
+pg_seed?=seed.sql
 scale?=1
 
 start:
@@ -21,10 +22,15 @@ start:
 		-e POSTGRES_PASSWORD=postgres \
 		-v $(CURDIR)/$(pg_data)/pg:/var/lib/postgresql/data \
 		postgres:$(pg_version)
+	@docker logs -f $(pg_name)
 
 stop:
 	@echo "Stopping Postgres..."
 	@docker stop $(pg_name) || true
+
+clear: stop
+	@echo "Destroy local data..."
+	@rm -rf .docker-data
 
 psql:
 	@echo "Connecting to the database ("quit" to exit) ..."
@@ -43,6 +49,9 @@ schema:
 		   $(CURDIR)/src/schema_v2.sql \
 		   $(CURDIR)/src/schema_v3.sql \
 		   $(CURDIR)/src/schema_v4.sql \
+		   $(CURDIR)/src/schema_v5.sql \
+		   $(CURDIR)/src/schema_v6.sql \
+		   $(CURDIR)/src/schema_v7.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 
 reset: schema
@@ -63,11 +72,11 @@ test-only:
 test: reset test-only
 	
 seed: reset
-	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/${pg_seed}
 
 seed-only:
 	@clear
-	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed.sql
+	@docker exec -i $(pg_name) psql -U postgres test-db < ./seed/${pg_seed}
 
 
 stress: stop schema

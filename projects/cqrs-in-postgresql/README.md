@@ -369,8 +369,7 @@ Before we proceed, we need to seed with data that are related by tenant referenc
 TRUNCATE "v4_commands" RESTART IDENTITY CASCADE;
 TRUNCATE "v4_responses" RESTART IDENTITY CASCADE;
 
-INSERT INTO "v4_commands"
-SELECT
+INSERT INTO "v4_commands" SELECT
   -- Randomic TenantID (tenant-1234)
 	(SELECT (ARRAY(SELECT concat('tenant-', t) FROM generate_series(1, 5000) AS "t"))[floor(random() * 5000 + 1)] where "t" = "t"),
 	json_build_object(
@@ -381,8 +380,7 @@ SELECT
 FROM generate_series(1, 1000000) AS "t";
 
 -- Generate randomic responses
-INSERT INTO "v4_responses"
-SELECT
+INSERT INTO "v4_responses" SELECT
 	floor(random()* (5000 -1 + 1) + 1),
 	'-', -- Just a non-null tenant id, will be reconciled
 	json_build_object(
@@ -489,3 +487,23 @@ LEFT JOIN (
 WHERE "c"."ref" = 'tenant-XXX'                -- filter by tenant
 ORDER BY "c"."cmd_id" ASC, "c"."created_at" DESC;
 ```
+
+---
+
+## Table Partitioning
+
+https://severalnines.com/database-blog/guide-partitioning-data-postgresql
+
+### v7
+
+|  Tot Rows |  Lapsed Time |  Inserts/sec |
+| --------- | ------------ | ------------ |
+| 1M        | 69s          |  14.5k       |
+| 2M        | 68s          |  14.7k       |
+| 3M        | 67s          |  14.9k       |
+| 4M        | 69s          |  14.5k       |
+| 5M        | 64s          |  15.6k       |
+| 6M        | 67s          |  14.9k       |
+| 7M        | 67s          |  14.9k       |
+| 8M        | s            |  k           |
+| 9M        | s            |  k           |
