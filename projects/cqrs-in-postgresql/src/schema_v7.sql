@@ -51,7 +51,7 @@ BEFORE INSERT
 ON "public"."v7_commands" 
 FOR EACH ROW EXECUTE PROCEDURE "public"."v7_commands_insert_fn"();
 
-CREATE TABLE IF NOT EXISTS "public"."v7_stats" (
+CREATE TABLE IF NOT EXISTS "public"."stats" (
   "query" TEXT NOT NULL,
   "duration_ms" INTEGER NOT NULL,
   "payload" JSONB NOT NULL DEFAULT '{}',
