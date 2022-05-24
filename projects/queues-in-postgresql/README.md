@@ -104,7 +104,21 @@ RETURNING *;
 
 > 👉 In this query we skip the field names declaration.
 >
-> This is possible because we set `payload` as first field in the data structure. That was a choice made on purpose 😎.
+> This is possible because we set `payload` as first field in the data structure.  
+> <small>That choice was made on purpose 😎.</small>
+
+Of course, we can easily look inside the queue, for it is just a simple table:
+
+```sql
+SELECT * FROM "queue_v1"
+ORDER BY "task_id" ASC
+LIMIT 10;
+```
+
+> 👉 It is always a good idea to **limit the query data-set**.  
+> 🧐 What if there are millions of items in the queue?
+
+Anyway, more about querying later.
 
 ---
 
@@ -115,7 +129,7 @@ We can seed some large amount of tasks by combining this query with `generate_se
 ```sql
 INSERT INTO "queue_v1"
 SELECT json_build_object('value', "t")
-FROM generate_series(1, 1000000) AS "t"
+FROM generate_series(1, 100000) AS "t"
 RETURNING *;
 ```
 
@@ -123,7 +137,9 @@ RETURNING *;
 
 It is **important** to understand that the _inserts/sec_ performance will progressively degrade with data growth.
 
-🔥 Data ingestion rate is possibly the strongest limitation in using an ACID Table for a queue. If you need to ingest more than a couple of hundred tasks/sec, it's probably the time time to consider [RabbitMQ][rabbitmq].
+> 🔥 Data ingestion rate is possibly the strongest limitation in using an ACID Table for a queue.
+>
+> If you need to ingest more than a couple of thousand tasks/sec, it's probably the time time to consider [RabbitMQ][rabbitmq] or other Cloud-based tools for massive data-ingestion.
 
 Here is a very empirical dataset for inserting 1M tasks each time on my Mac. It's not rocket science, and you can see that the performance "stabilizes" between 30 and 40 thousands inserts/s.
 
@@ -142,11 +158,13 @@ Here is a very empirical dataset for inserting 1M tasks each time on my Mac. It'
 
 👉 Once again, I wouldn't use SQL if massive data ingestion rates must be guaranteed, but numbers into the thousands of tasks/s should fit way above 80% of the use cases. Pareto wins!
 
+🧐 Food for thoughs:
+
 - What does MASSIVE data ingestion mean to you?
 - What does MASSIVE data ingestion mean to your project?
 - How do you estimate your data ingestion peaks?
 
-> 🧐 Is it worth to use Kafka or SQL just because you don't know the ansers to the questions above?
+> Is it a good choice to use Kafka or RabbitMQ just because you don't know the answers to the questions above?
 
 ---
 
@@ -177,20 +195,23 @@ This is quite straightforward, right?
 
 ## Distributed Processing
 
-But queues exists as so to tap into the wonders of distributed processing:
+But queues exists as so to tap into the wonders of distributed processing and parallel execution. Like you do at the supermarket checkout.
 
-> DISTRIBUTE PROCESSING:
+> DISTRIBUTE PROCESSING is:
 >
 > - different processes
 > - running on different servers
-> - process multiple tasks
-> - in parallel
+> - processing multiple tasks
+> - all toghether (in parallel)
+> - NOT SCREWING IT UP
+
+    <small>... and this is the difficult bit!</small>
 
 That simply means that many tasks should be "picked" before the first one gets completed.
 
-🚧 Here our current solution breaks! 🚧
+🚧 Here is where our current solution breaks! 🚧
 
-> If you run the task picking query multiple times... you always get the same task!
+If you run the task picking query multiple times before completing the first task... you always get the same task!
 
 ---
 
@@ -198,7 +219,8 @@ That simply means that many tasks should be "picked" before the first one gets c
 
 Somehow, it becomes necessary to mark a task as "work in progress" after picking it up.
 
-Here is a second version of our queue data structure. Note that we keep the trick of setting `payload` as first field in the list!
+Here is a second version of our queue data structure.  
+_Note that we keep the trick of setting `payload` as first field in the list!_
 
 ```sql
 CREATE TABLE IF NOT EXISTS "public"."queue_v2" (
@@ -225,7 +247,7 @@ INSERT INTO "queue_v2"
 SELECT
   json_build_object('value', "t"),
   random() > 0.5
-FROM generate_series(1, 1000000) AS "t"
+FROM generate_series(1, 100000) AS "t"
 RETURNING *;
 ```
 
@@ -337,7 +359,9 @@ RETURNING *;
 
 Now we can start looking into performance bottlenecks.
 
-Unfortunately (or fortunaltely), Postgres works exceedingly fast WHEN EMPTY. If you have a table with just a few thousands of rows, there is no such thing as slow queries.
+Unfortunately (or fortunaltely), Postgres works exceedingly fast WHEN EMPTY.
+
+> If you have a table with just a few thousands of rows, there is no such thing as slow queries.
 
 So the first step into finding and solving performance bottlenecks is to populate out dataset with some decent amount of data:
 
@@ -351,7 +375,9 @@ FROM generate_series(1, 1000000) AS "t";
 
 This will populate 1M rows worth of tasks, with only _~1 available task each 10K rows_.
 
-> 👉 The available tasks are so sparse as so to put more stress on the db, and highlight a possible bottleneck.
+> 👉 The available tasks are so sparse as so to put more stress on the db, and highlight any possible bottleneck.
+
+Remember that ingestion rates performances will decrease in time:
 
 |  Tot Rows |  Lapsed Time |  Inserts/sec |
 | --------- | ------------ | ------------ |
@@ -362,18 +388,19 @@ This will populate 1M rows worth of tasks, with only _~1 available task each 10K
 | 5M        | 17s          |  58K         |
 | 10M       | 103s         |  48K         |
 
-The insert performances don't change much from my previous test. After all, this index is quite unexpensive.
+The insert performances don't change much from my previous test. Of course, this is a very minimal increase in complexity that may not really affect this simplicistic level of testing.
 
-> This test also highlight how testing on a consumer OS - like a Mac - is highly unpredictable. The test results variate a lot based on the overall OS activities.
->
-> I had Teams running during my first test, and that little bastard is eager of CPU cycles!
+🙏 Also, this time my boss wans't texting me on Teams.  
+It means a lot to my CPU!
+
+> This result-set highlights how testing on a consumer OS - like my Mac - is highly unpredictable. The test results variate a lot based on the overall OS activities.
 
 Now it is time to test our **Task Picking Performances** with the following query:
 
 ```sql
 UPDATE "queue_v2"
 SET "is_available" = false
-WHERE "task_id" = (
+WHERE "task_id" IN (
   SELECT "task_id"
   FROM "queue_v2"
   WHERE "is_available" = true
@@ -395,7 +422,9 @@ Here are some results that I've collected:
 | 5M        | 1000ms          |
 | 10M       | 4500ms          |
 
-> 🤬 This sucks, right? Only 10M rows in a table (this is not even starting to be "data") and the query runs for SECONDS! That is like "foreverandever" in PostgreSQL world!
+> 🤬 IT SUCKS!
+>
+> Only 10M rows in a table (this is not even starting to be "data") and the query runs for SECONDS! That is like "foreverandever" in PostgreSQL world!
 
 Fortunately, _PARTIAL INDEXES_ help speeding up the whole process!
 
@@ -409,14 +438,14 @@ WHERE ( "is_available" = true );
 DROP INDEX "queue_v2_pick_idx";
 ```
 
-|  Tot Rows |   Pick Without Index | Pick With Index |
-| --------- | -------------------- | --------------- |
-| 1M        | 8ms                  |  5ms            |
-| 2M        | 90ms                 |  5ms            |
-| 3M        | 130ms                |  7ms            |
-| 4M        | 1500ms               |  7ms            |
-| 5M        | 1000ms               |  7ms            |
-| 10M       | 4500ms               |  8ms            |
+|  Tot Rows | Pick Without Index | Pick With Index |
+| --------- | ------------------ | --------------- |
+| 1M        | 8ms                | 5ms             |
+| 2M        | 90ms               | 5ms             |
+| 3M        | 130ms              | 7ms             |
+| 4M        | 1500ms             | 7ms             |
+| 5M        | 1000ms             | 7ms             |
+| 10M       | 4500ms             | 8ms             |
 
 🔥 It is evident that this index helps to keep the task picking performances stable even with a linear data growth.
 
@@ -489,13 +518,11 @@ WHERE i.relname='queue_v2';
 
 And here are some stats from my system:
 
-```
 | Tot Rows |  Disk Space |  Index Space |
 | -------- | ----------- | ------------ |
-| 1M       |   65M       | 14K          |
-| 5M       |   326M      | 32K          |
-| 10M      |   651M      | 40kK          |
-```
+| 1M       |  65M        | 14K          |
+| 5M       |  326M       | 32K          |
+| 10M      |  651M       | 40kK         |
 
 As you can see, there are 2 costs factors in the solution we presented:
 
@@ -565,18 +592,20 @@ Here we tap into the mighty world of **FAILURE MANAGEMENT**, and we have a few p
 2. we flag the picked task with the worker's id
 3. we timeout the worker's `keep alive` and release the related tasks
 
-> 👉 This is the advanced mechanic usually employed by famous tools such as RabitMQ or Kafka.
->
-> It works great, but **it requires an explicit SDK** as so to negotiate the WorkerID.
+> 👉 This is the advanced mechanic usually employed by famous tools such as RabbitMQ or Kafka.
+
+It works great, but **it requires an explicit SDK** as so to negotiate the WorkerID.
+
+In thisproject, I'd like the Worker to only need a Postgres client in order to perform all the functionalities of a proper queue system.
 
 ### Task Timeout
 
 1. when we pick a task, we annotate the pick up date
-2. after a while, we reset tasks that are expired by an arbitrary timeout
+2. after an arbitrary timeout, we reset tasks visibility
 
 > This solution is very simple, but **it requires us to run a batch job** to release tasks that have been not completed in time.
 
-In order to achieve so, we can introduce a new column `picked_at` in our schema:
+In order to achieve so, we can introduce a new _nullable_ column `picked_at` in our schema:
 
 ```sql
 CREATE TABLE IF NOT EXISTS "public"."queue_v3" (
@@ -589,7 +618,7 @@ CREATE TABLE IF NOT EXISTS "public"."queue_v3" (
 
 This column should always contain _the last time that the task was picked by a worker_.
 
-The pick-up query should now evolve into:
+The pick-up query can now evolve into:
 
 ```sql
 UPDATE "queue_v3"
@@ -608,8 +637,8 @@ First, we can define a _TRIGGER FUNCTION_ that will update the `picked_at` infor
 CREATE OR REPLACE FUNCTION "queue_v3_picked_at"()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW."is_available" = false AND
-     OLD."is_available" = true
+  IF NEW."is_available" IS false AND
+     OLD."is_available" IS true
   THEN
     NEW.picked_at = NOW();
   END IF;
@@ -632,7 +661,43 @@ EXECUTE PROCEDURE "queue_v3_picked_at"();
 >
 > So much business logic can be moved from the Application Layer into the DB, achieving unbelievable performances at very little load price.
 
-The last piece of this implementation would be to recover tasks that have timeouted:
+With this preparation in place, we can insert again some dummy data:
+
+```sql
+INSERT INTO "queue_v3"
+SELECT json_build_object('name', CONCAT('task', "t"))
+FROM generate_series(1, 10) AS "t";
+```
+
+And run our pick-task query a few times, as so to flag some tasks as "work in progress":
+
+```sql
+UPDATE "queue_v3"
+SET "is_available" = false
+WHERE "task_id" IN (
+  SELECT "task_id"
+  FROM "queue_v3"
+  WHERE "is_available" = true
+  ORDER BY "task_id" ASC
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+)
+RETURNING *;
+```
+
+You should notice that after you run this query for a while, no results will come to you anymore. That is because all the available tasks have already been taken.
+
+But now we have the piece of information that we desperately need as so to identify "work in progress" tasks that have timed out:
+
+```sql
+SELECT *
+FROM "queue_v3"
+WHERE "is_available" = false
+  AND "picked_at" < now() - INTERVAL '5s'
+ORDER BY "picked_at" ASC;
+```
+
+🧨 The last piece of this implementation would be to recover tasks that have timeouted:
 
 ```sql
 UPDATE "queue_v3"
@@ -652,6 +717,20 @@ WHERE "task_id" IN (
 It is a good idea to never run queries that target an entire dataset, for the execution time is unpredictable.
 
 I'd rather `LIMIT` the subquery as so to apply a ceiling to the possible updates, and then repeat my query until it returns zero rows. This way, the execution time would spread in time and reduce the workload on the machine.
+
+```sql
+UPDATE "queue_v3"
+SET "is_available" = true
+WHERE "task_id" IN (
+  SELECT "task_id"
+  FROM "queue_v3"
+  WHERE "is_available" = false
+    AND "picked_at" < now() - INTERVAL '5s'
+  ORDER BY "picked_at" ASC
+  FOR UPDATE SKIP LOCKED
+  LIMIT 500
+) RETURNING *;
+```
 
 🧐 **What about recover performances?** 🧐
 

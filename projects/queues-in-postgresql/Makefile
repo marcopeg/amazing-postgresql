@@ -26,6 +26,10 @@ stop:
 	@echo "Stopping Postgres..."
 	@docker stop $(pg_name) || true
 
+clear: stop
+	@echo "Dropping the project..."
+	sudo rm -rf $(CURDIR)/$(pg_data)
+
 psql:
 	@echo "Connecting to the database ("quit" to exit) ..."
 	@docker exec -it $(pg_name) psql -U postgres test-db
@@ -36,7 +40,7 @@ logs:
 	@docker container logs -f $(pg_name)
 
 schema:
-	clear
+	@clear
 	@echo "Building Project ..."
 	@mkdir -p $(CURDIR)/$(pg_data)
 	@cat $(CURDIR)/src/schema_v1.sql \
@@ -46,9 +50,15 @@ schema:
 			 $(CURDIR)/src/append.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 
-reset: schema
-	clear
+
+destroy:
+	@clear
+	@echo "Destroying current db..."
 	@docker exec -i $(pg_name) psql -U postgres < ../../testing/unit-tests/reset-db.sql
+
+reset: destroy schema
+	@clear
+	@echo "Applying db schema..."
 	@docker exec -i $(pg_name) psql -U postgres test-db < $(CURDIR)/$(pg_data)/init-schema.sql
 
 test-only:
