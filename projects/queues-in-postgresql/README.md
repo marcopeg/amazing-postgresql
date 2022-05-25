@@ -745,6 +745,22 @@ SELECT
 FROM generate_series(1, 1000000) AS "t";
 ```
 
+Then try to run the failover recover uery again:
+
+```sql
+UPDATE "queue_v3"
+SET "is_available" = true
+WHERE "task_id" IN (
+  SELECT "task_id"
+  FROM "queue_v3"
+  WHERE "is_available" = false
+    AND "picked_at" < now() - INTERVAL '5s'
+  ORDER BY "picked_at" ASC
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+) RETURNING *;
+```
+
 We suddenly experience a DRAMATIC PERFORMANCE ISSUE with out recover query.
 
 > In my machine it goes up to 5s to recover one sigle task!
@@ -796,11 +812,11 @@ Execution Time: 0.123 ms
 
 🤬 WTF?
 
-> We get this gigantic difference because we inserted 1M timeouted tasks with a randomic `picked_at` value.
+> We get this gigantic difference because we inserted 1M timed-out tasks with a randomic `picked_at` value. We couldn't have created a worse situation for our dear PostgreSQL to deal with 😅.
 
-In reality, it would never be THAT BAD because timeouted tasks will always be more or less adjacent one to another at the top of the queue.
+In reality, it would never be THAT BAD: timed-out tasks will always be more or less adjacent one to another at the top of the queue. And sorting through them would require less effort.
 
-Still, this is evidence of a performance bottleneck that we are able to fix with a _PARTIAL INDEX_:
+Still, this is evidence of a performance bottleneck that we can fix with another _PARTIAL INDEX_:
 
 ```sql
 CREATE INDEX "queue_v3_recover_idx"
@@ -808,7 +824,7 @@ ON "queue_v3" ( "picked_at" ASC )
 WHERE ( "is_available" = false );
 ```
 
-And now our recovery query plan turns out to be:
+Now, our recovery query plan turns out to be:
 
 ```
 Limit  (cost=0.43..0.50 rows=1 width=16) (actual time=0.064..0.089 rows=1 loops=1)
@@ -818,14 +834,14 @@ Planning Time: 0.168 ms
 Execution Time: 0.143 ms
 ```
 
-And the query keeps running in just under 2ms to recover 1 task, and under 20ms to recover 100.
+And the query keeps running in just under 2ms to recover 1 task, and under 50ms to recover 100.
 
 ### Timestamp Execution Plan
 
 This approach introduces a radical change, for we are going to use a `timestamp` to manage the different states of a task:
 
-- if `ts <= now()` the task _should be processed_, and it is available
-- if `ts > now()` the task is just planned for execution and it is NOT available
+- if `ts <= now()` the task _should be processed_, and it is available: that's a **pending** task
+- if `ts > now()` the task is just planned for execution and it is NOT available: that's a **planned** task
 
 ```sql
 CREATE TABLE IF NOT EXISTS "public"."queue_v4" (
@@ -839,9 +855,17 @@ This little schema has HUGE implications:
 
 1. We can insert tasks in the queue at any point in time  
    <small>the "queue" becomes a "calendar"</small>
-2. Flagging a task as "under execution" is achieved by modifying the `next_iteration`
-3. Managing an _execution timeout_ is achieved through a smart setting of `next_iteration`
-4. The recovery of timed-out tasks is _AUTOMATIC_ as time keeps moving!
+2. Flagging a task as "under execution" is achieved by pushing the `next_iteration` into the future
+3. The _execution timeout_ is set per-task by **how much into the future** we set `next_iteration`
+4. The recovery of timed-out tasks is _AUTOMATIC_ as time keeps moving through time!
+
+Let's insert a few tasks:
+
+```sql
+INSERT INTO "queue_v4"
+SELECT json_build_object('name', CONCAT('task', "t"))
+FROM generate_series(1, 3) AS "t";
+```
 
 The pick-up query becomes:
 
@@ -858,8 +882,9 @@ WHERE "task_id" = (
 ) RETURNING *;
 ```
 
-This query will pick one single task, setting a timeout of 10 seconds for its execution.  
-Try running again after that amount of time, the task will be picked up again!
+This query will pick one single task, setting a timeout of 10 seconds for its execution.
+
+> Try running again after that amount of time, the task will be picked up again!
 
 😎 **TO GOOD TO BE TRUE** 😎
 
@@ -874,6 +899,21 @@ SELECT
   	ELSE now() + '10s'::INTERVAL * random()
   END
 FROM generate_series(1, 1000000) AS "t";
+```
+
+And pick up some tasks again:
+
+```sql
+UPDATE "queue_v4"
+SET "next_iteration" = now() + INTERVAL '10s'
+WHERE "task_id" = (
+  SELECT "task_id"
+  FROM "queue_v4"
+  WHERE "next_iteration" <= now()
+  ORDER BY "next_iteration" ASC
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+) RETURNING *;
 ```
 
 Unfortunately, we quickly see a **DRAMATIC PERFORMANCE DROP** 😒.
@@ -893,19 +933,32 @@ ON "queue_v4" ( "next_iteration" ASC )
 WHERE ( "next_iteration" <= now() );
 ```
 
-Unfortunately (get used to "unfortunately"), TIME can not be partially indexed, as it constantly change.
+Unfortunately (get used to "unfortunately" in Computer Science), TIME can not be partially indexed, as it constantly change. It's mutable and impure. At leas in mathematical gergon.
 
 ```Error
 ERROR:  functions in index predicate must be marked IMMUTABLE
 ```
-
-> FUTURE NOWs live in the PAST
 
 But we can AT THE VERY LEAST build an index that helps keeping stuff in the proper order:
 
 ```sql
 CREATE INDEX "queue_v4_pick_idx"
 ON "queue_v4" ( "next_iteration" ASC );
+```
+
+And try picking some more tasks:
+
+```sql
+UPDATE "queue_v4"
+SET "next_iteration" = now() + INTERVAL '10s'
+WHERE "task_id" = (
+  SELECT "task_id"
+  FROM "queue_v4"
+  WHERE "next_iteration" <= now()
+  ORDER BY "next_iteration" ASC
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+) RETURNING *;
 ```
 
 Here are the results... no comments...
@@ -939,6 +992,25 @@ WHERE i.relname='queue_v4';
 With 10M rows, the table size is up to `730Mb`, but the indexes are taking another `426Mb` for a grand total of `1.2Gb`.
 
 🔥 **The query performance costs us a 30% increase in disk size, and disk I/O.** 🔥
+
+Another performance tradeoff is on the ingestion rate:
+
+| Tot Rows | Lapsed Time | Inserts/sec |
+| -------- | ----------- | ----------- |
+| 1M       | 27s         |  37k        |
+| 2M       | 40s         |  25k        |
+| 3M       | 50s         |  20k        |
+| 4M       | 47s         |  21k        |
+| 5M       | 49s         |  20k        |
+| 6M       | 57s         |  17k        |
+| 7M       | 65s         |  15k        |
+| 8M       | 36s         |  27k        |
+| 9M       | 35s         |  28k        |
+| 10M      | 34s         |  29k        |
+
+If you remember, in the first simple example, data ingestion rate was ~40k rows/s. This results are not bad, but still not even optimal.
+
+As I said already, SQL-based queues are not famous for being able to ingest massive amounts of data.
 
 ---
 
