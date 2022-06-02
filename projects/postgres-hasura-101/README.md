@@ -44,6 +44,17 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [PostgreSQL Views & Hasura.io](#postgresql-views--hasuraio)
   - [Materialized Views](#materialized-views)
 - [Test For Performance Issues](#test-for-performance-issues)
+- [Role-based Access Control](#role-based-access-control)
+  - [Access Control Headers](#access-control-headers)
+  - [The Tenant Role](#the-tenant-role)
+  - [Give Tenant Access To Products](#give-tenant-access-to-products)
+  - [Insert Products By Tenant](#insert-products-by-tenant)
+  - [Update Products By Tenant](#update-products-by-tenant)
+  - [Delete Products By Tenant](#delete-products-by-tenant)
+  - [Propagating Permissions](#propagating-permissions)
+- [Backup & Restore](#backup--restore)
+  - [Manually Import/Export Metadata](#manually-importexport-metadata)
+  - [Export Metadata Via CLI](#export-metadata-via-cli)
 
 ---
 
@@ -1350,6 +1361,128 @@ ON "movements" ("product_id" ASC);
 ```
 
 > 🔥 Even with indexes, keeping a live inventory for a large amount of products/movements is a **really bad idea!**
+
+---
+
+## Role-based Access Control
+
+Hasura.io handles both vertical and horizontal access control using a combination of `roles` and `session variables`.
+
+- **Horizontal Access Control** restricts access to certain columns
+- **Vertical Access Control** restricts access to certain rows
+
+### Access Control Headers
+
+Hasura doesn't provide a login facility. The request must present some credentials in the form of:
+
+- [JWT Token](https://hasura.io/docs/latest/graphql/core/auth/authentication/jwt/)
+- [Sidecar Authentication service](https://hasura.io/docs/latest/graphql/core/auth/authentication/webhook/)
+
+The GraphiQL Console provides a simple way to simulate an Authenticated request, by setting some `session variables headers`:
+
+![Authenticated Request](./images//hasura-session-variables.jpg)
+
+👉 Please note that the _query explorer_ (left side) shows `no_query_available`. That is because we haven't set any ACL rule yet.
+
+### The Tenant Role
+
+The first role that we introduce in our APIs is for the `tenant`:
+
+|  header            | value  |
+| ------------------ | ------ |
+| x-hasura-role      | tenant |
+| x-hasura-tenant-id | t1     |
+
+An request that carries such a role represents a user logged-in to perform some administrative operations over an e-commerce's tenant.
+
+- list his own products
+- perform CRUD on products
+- perform inventory operations
+
+### Give Tenant Access To Products
+
+1. Go to the "Data" tab
+2. Select the "Products" table from the left menu
+3. Navigate to the "Permissions" tab
+
+Here we can add the new role `tenant` and setup the ACL rules:
+
+![ACL Tenant Products](./images/acl-tenant-products.jpg)
+
+👉 You can setup rather complex rules using the "Row select permission", but the rule of the thumb is that the main tenancy discriminator should available in every table for sake of simplicity and performances.
+
+👉 Always limit the number of rows as so to force offset pagination to the client. You don't want a situation in which the client is allowed to pull millions of rows!
+
+![ACL Tenants Producs Query](./images//acl-tenant-products-query.jpg)
+
+In this screen we can appreciate that the query contains no filter on the tenant.
+
+But the filter is applied under the hood thanks to the Session Variables Headers that are set in the GraphiQL.
+
+🚧 Try to change the `x-hasura-tenant-id` value. What happens?
+
+### Insert Products By Tenant
+
+Now we want to give a Tenant the possibility to insert a product in its own data space.
+
+Here the goal is to avoid cheaters: the `tenant_id` should come from the session, not from the mutation as we did before!
+
+![ACL Tenant Products Insert](./images/acl-tenant-products-insert.jpg)
+
+To insert a new product now the Mutation will be something like:
+
+```gql
+mutation addProductByTenant {
+  insert_products_one(
+    object: { id: "pt1", name: "foobar", description: "-", price: 10 }
+  ) {
+    id
+    name
+    price
+    created_at
+  }
+}
+```
+
+![Add Product By Tenant](./images/add-product-by-tenant.jpg)
+
+### Update Products By Tenant
+
+Here we combine Horizontal and Vertical Access Control to make sure that only the Products from the acting Tenant can be affected:
+
+![ACL Tenant Products Update](./images/acl-tenant-products-update.jpg)
+
+### Delete Products By Tenant
+
+The `delete` permission is usually the easiest for you want to apply Horizontal Access Control only.
+
+Just give the "same as select" rule in the rows restrictions.
+
+### Propagating Permissions
+
+Now yoy should have all the information you need to setup the proper permissions on the `movements` table, but also on the views that we have created.
+
+👉 In fact, _Views_ are often used to improve the granularity of ACL that Hasura can offer, for a View can already be created with a very specific Vertical Control in mind.
+
+---
+
+## Backup & Restore
+
+Now that we have spent a reasonable amount of time playing with the Hasura console, we may start to worry what happens if the server goes down.
+
+Backing things up is never a bad idea.
+
+### Manually Import/Export Metadata
+
+The first approach is to manually export Hasura's metadata, and save such file in a safe place.
+
+When you need it, you can re-import it.
+
+![Import/export manually](./images/import-export-manually.jpg)
+
+👉 This is a rather simple way for keeping in sync 2 instances, say _development_ and _production_. It's ok to do it like that in the beginning.
+
+### Export Metadata Via CLI
 
 ---
 

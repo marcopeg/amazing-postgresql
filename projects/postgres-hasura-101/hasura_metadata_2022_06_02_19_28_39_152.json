@@ -1,0 +1,277 @@
+{
+  "resource_version": 33,
+  "metadata": {
+    "version": 3,
+    "sources": [
+      {
+        "name": "default",
+        "kind": "postgres",
+        "tables": [
+          {
+            "table": {
+              "schema": "public",
+              "name": "movements"
+            },
+            "object_relationships": [
+              {
+                "name": "product",
+                "using": {
+                  "foreign_key_constraint_on": "product_id"
+                }
+              },
+              {
+                "name": "tenant",
+                "using": {
+                  "foreign_key_constraint_on": "tenant_id"
+                }
+              }
+            ],
+            "insert_permissions": [
+              {
+                "role": "tenant",
+                "permission": {
+                  "check": {},
+                  "set": {
+                    "tenant_id": "x-hasura-tenant-id"
+                  },
+                  "columns": [
+                    "amount",
+                    "note",
+                    "product_id"
+                  ],
+                  "backend_only": false
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "tenant",
+                "permission": {
+                  "columns": [
+                    "amount",
+                    "created_at",
+                    "id",
+                    "note",
+                    "product_id"
+                  ],
+                  "filter": {
+                    "tenant_id": {
+                      "_eq": "x-hasura-tenant-id"
+                    }
+                  },
+                  "limit": 25
+                }
+              }
+            ]
+          },
+          {
+            "table": {
+              "schema": "public",
+              "name": "products"
+            },
+            "object_relationships": [
+              {
+                "name": "availability_live",
+                "using": {
+                  "manual_configuration": {
+                    "remote_table": {
+                      "schema": "public",
+                      "name": "products_availability_live"
+                    },
+                    "insertion_order": null,
+                    "column_mapping": {
+                      "id": "product_id"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "tenant",
+                "using": {
+                  "foreign_key_constraint_on": "tenant_id"
+                }
+              }
+            ],
+            "array_relationships": [
+              {
+                "name": "movements",
+                "using": {
+                  "manual_configuration": {
+                    "remote_table": {
+                      "schema": "public",
+                      "name": "movements"
+                    },
+                    "insertion_order": null,
+                    "column_mapping": {
+                      "tenant_id": "tenant_id",
+                      "id": "product_id"
+                    }
+                  }
+                }
+              }
+            ],
+            "insert_permissions": [
+              {
+                "role": "tenant",
+                "permission": {
+                  "check": {},
+                  "set": {
+                    "tenant_id": "x-hasura-tenant-id"
+                  },
+                  "columns": [
+                    "description",
+                    "id",
+                    "is_visible",
+                    "name",
+                    "price"
+                  ],
+                  "backend_only": false
+                }
+              }
+            ],
+            "select_permissions": [
+              {
+                "role": "tenant",
+                "permission": {
+                  "columns": [
+                    "created_at",
+                    "description",
+                    "id",
+                    "is_visible",
+                    "name",
+                    "price",
+                    "updated_at"
+                  ],
+                  "filter": {
+                    "tenant_id": {
+                      "_eq": "x-hasura-tenant-id"
+                    }
+                  },
+                  "limit": 25
+                }
+              }
+            ],
+            "update_permissions": [
+              {
+                "role": "tenant",
+                "permission": {
+                  "columns": [
+                    "description",
+                    "is_visible",
+                    "name",
+                    "price"
+                  ],
+                  "filter": {
+                    "tenant_id": {
+                      "_eq": "x-hasura-tenant-id"
+                    }
+                  },
+                  "check": null
+                }
+              }
+            ],
+            "delete_permissions": [
+              {
+                "role": "tenant",
+                "permission": {
+                  "filter": {
+                    "tenant_id": {
+                      "_eq": "x-hasura-tenant-id"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "table": {
+              "schema": "public",
+              "name": "products_availability_cached"
+            }
+          },
+          {
+            "table": {
+              "schema": "public",
+              "name": "products_availability_live"
+            }
+          },
+          {
+            "table": {
+              "schema": "public",
+              "name": "products_display"
+            },
+            "select_permissions": [
+              {
+                "role": "tenant",
+                "permission": {
+                  "columns": [
+                    "amount",
+                    "created_at",
+                    "description",
+                    "id",
+                    "name",
+                    "price",
+                    "updated_at"
+                  ],
+                  "filter": {
+                    "tenant_id": {
+                      "_eq": "x-hasura-tenant-id"
+                    }
+                  },
+                  "limit": 25
+                }
+              }
+            ]
+          },
+          {
+            "table": {
+              "schema": "public",
+              "name": "tenants"
+            },
+            "array_relationships": [
+              {
+                "name": "movements",
+                "using": {
+                  "foreign_key_constraint_on": {
+                    "column": "tenant_id",
+                    "table": {
+                      "schema": "public",
+                      "name": "movements"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "products",
+                "using": {
+                  "foreign_key_constraint_on": {
+                    "column": "tenant_id",
+                    "table": {
+                      "schema": "public",
+                      "name": "products"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "configuration": {
+          "connection_info": {
+            "use_prepared_statements": true,
+            "database_url": {
+              "from_env": "HASURA_GRAPHQL_DATABASE_URL"
+            },
+            "isolation_level": "read-committed",
+            "pool_settings": {
+              "connection_lifetime": 600,
+              "retries": 1,
+              "idle_timeout": 180,
+              "max_connections": 50
+            }
+          }
+        }
+      }
+    ]
+  }
+}
