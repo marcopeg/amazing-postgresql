@@ -38,6 +38,12 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [Insert Multiple Records](#insert-multiple-records)
   - [Insert Nested Data](#insert-nested-data)
 - [Custom Relationships on Multiple Fields](#custom-relationships-on-multiple-fields)
+- [Data Aggregation & Views](#data-aggregation--views)
+  - [The Availability Query](#the-availability-query)
+  - [The Availability View](#the-availability-view)
+  - [PostgreSQL Views & Hasura.io](#postgresql-views--hasuraio)
+  - [Materialized Views](#materialized-views)
+- [Test For Performance Issues](#test-for-performance-issues)
 
 ---
 
@@ -1121,6 +1127,225 @@ Now that you have removed the default relationship that Hasura did setup thanks 
 ![Relationship on multiple fields](./images/relationship-on-multiple-fields.jpg)
 
 Once you have saved, you can go back to that [Insert Nested Data](#insert-nested-data) Mutation and remove the duplicated `tenant_id` from the movements rows.
+
+---
+
+## Data Aggregation & Views
+
+In our simple schema, the availability of any given product must be calculated by summing all the related movement records.
+
+Such a request can be achieved via Hasura:
+
+```gql
+query getProductsWithAvailability {
+  products {
+    id
+    name
+    description
+    price
+    is_visible
+    availability: movements_aggregate {
+      aggregate {
+        sum {
+          amount
+        }
+      }
+    }
+    tenant_id
+    created_at
+    updated_at
+  }
+}
+```
+
+🧐 Besides the sub-optimal output structure, with this solution we can't filter products by availability!
+
+### The Availability Query
+
+We could use plain SQL to perform the very same calculation:
+
+```sql
+SELECT "product_id", sum("amount") AS "amount"
+FROM "movements"
+GROUP BY "product_id"
+LIMIT 10;
+```
+
+### The Availability View
+
+And the next step is to "save" this query into a PostgreSQL view:
+
+```sql
+CREATE VIEW "public"."products_availability_live" AS
+SELECT "product_id", sum("amount") AS "amount"
+FROM "movements"
+GROUP BY "product_id";
+```
+
+### PostgreSQL Views & Hasura.io
+
+Views are just like tables in Hasura.
+
+You can _track_ our new view, and you can setup a relationship that goes from the `products` table to the `products_availability_live` view.
+
+1. Go to the "Data" tab
+2. Click "Track _products_availability_live_" under "Untracked tables or views"
+3. Click on "Products" from the left menu
+4. Navigate to the "Relationships" tab
+5. Add a manual Object relationship to the `products_availability_live` view
+
+![Products Live Availability](./images/products-live-availability.jpg)
+
+With this new configuration in place, we can go back to the API tab and simplify our query:
+
+```gql
+query getProductsWithAvailability {
+  products {
+    id
+    name
+    price
+    availability: availability_live {
+      amount
+    }
+  }
+}
+```
+
+Now that we have this relationship in place, we can start to use the `availability.amount` field to sort and filter our dataset:
+
+```gql
+query getAvailableProducts {
+  products(
+    order_by: { availability_live: { amount: asc } }
+    where: { availability_live: { amount: { _gt: "0" } } }
+  ) {
+    id
+    name
+    price
+    availability: availability_live {
+      amount
+    }
+  }
+}
+```
+
+### Materialized Views
+
+Materialized views store the result of a query in a persisted table instead of sourcing the real data at update time.
+
+🔥 Materialized Views are a Cache Mechanism
+
+For this reason, it is a good idea to add a `timestamp` information to the table, that will be forcefully updated when the view gets refreshed:
+
+```sql
+SELECT
+  "product_id",
+  sum("amount") AS "amount",
+  now() AS "updated_at"
+FROM "movements"
+GROUP BY "product_id"
+LIMIT 10;
+```
+
+The command to create the materialized view is similar to the one we used for the view:
+
+```sql
+CREATE MATERIALIZED VIEW "public"."products_availability_cached" AS
+SELECT
+  "product_id",
+  sum("amount") AS "amount",
+  now() AS "updated_at"
+FROM "movements"
+GROUP BY "product_id";
+```
+
+- try to change some availability and see that the "live" view updates while the "cached" view doesn't
+- try to add or remove products as well
+
+In order to update a materialized view we must issue a manual command:
+
+```sql
+REFRESH MATERIALIZED VIEW "public"."products_availability_cached";
+```
+
+👉 Be careful with Materialized Views, they are cool, but occupy much disk space and may end up being quite heavy to refresh!
+
+With Hasura, you can use Materialized Views pretty much the same way you use Views.
+
+### The ProductsDisplay View
+
+We can move a step forward and look into joining data between tables and views, as so to provide a linear data structure that would give us only visible and available products.
+
+The query may be:
+
+```sql
+SELECT
+  "p"."id",
+  "p"."tenant_id",
+  "p"."name",
+  "p"."description",
+  "p"."price",
+  "a"."amount",
+  "p"."created_at",
+  "p"."updated_at"
+FROM "products_availability_live" AS "a"
+LEFT JOIN "products" AS "p" ON "p"."id" = "a"."product_id"
+WHERE "p"."is_visible" IS TRUE
+  AND "a"."amount" > 0
+LIMIT 10;
+```
+
+And the resulting view:
+
+```sql
+CREATE VIEW "public"."products_display" AS
+SELECT
+  "p"."id",
+  "p"."tenant_id",
+  "p"."name",
+  "p"."description",
+  "p"."price",
+  "a"."amount",
+  "p"."created_at",
+  "p"."updated_at"
+FROM "products_availability_live" AS "a"
+LEFT JOIN "products" AS "p" ON "p"."id" = "a"."product_id"
+WHERE "p"."is_visible" IS TRUE
+  AND "a"."amount" > 0;
+```
+
+---
+
+## Test For Performance Issues
+
+The first step for finding bottleneck is to seed TONS of data.
+
+- use the `products` seed query and plant at least 100k products
+- use the `movements` seed query and plant at least 500k products
+
+And right away we can start noticing that the following query takes above 1 second to perform:
+
+```gql
+query MyQuery {
+  products_display(limit: 10) {
+    name
+    amount
+  }
+}
+```
+
+The reason is that there is great diversity in the `product_id` from line to line.
+
+It would be much easier for the PostgreSQL engine to do the math if all `p1` lines where one after the other, and then `p2`, and so forth.
+
+Luckily, we can fix this with an index:
+
+```sql
+CREATE INDEX "movements_product_id_idx"
+ON "movements" ("product_id" ASC);
+```
+
+> 🔥 Even with indexes, keeping a live inventory for a large amount of products/movements is a **really bad idea!**
 
 ---
 

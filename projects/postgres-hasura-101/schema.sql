@@ -92,3 +92,45 @@ ON UPDATE CASCADE
 ON DELETE CASCADE
 NOT DEFERRABLE;
 
+
+---
+--- Availability View
+---
+
+CREATE VIEW "public"."products_availability_live" AS
+SELECT "product_id", sum("amount") AS "amount"
+FROM "movements"
+GROUP BY "product_id";
+
+CREATE MATERIALIZED VIEW "public"."products_availability_cached" AS
+SELECT 
+  "product_id", 
+  sum("amount") AS "amount",
+  now() AS "updated_at"
+FROM "movements"
+GROUP BY "product_id";
+
+CREATE VIEW "public"."products_display" AS
+SELECT
+  "p"."id",
+  "p"."tenant_id",
+  "p"."name",
+  "p"."description",
+  "p"."price",
+  "a"."amount",
+  "p"."created_at",
+  "p"."updated_at"
+FROM "products_availability_live" AS "a"
+LEFT JOIN "products" AS "p" ON "p"."id" = "a"."product_id"
+WHERE "p"."is_visible" IS TRUE
+  AND "a"."amount" > 0;
+
+
+
+---
+--- Performance Optimization
+---
+
+DROP INDEX "movements_product_id_idx";
+CREATE INDEX "movements_product_id_idx"
+ON "movements" ("product_id" ASC);
