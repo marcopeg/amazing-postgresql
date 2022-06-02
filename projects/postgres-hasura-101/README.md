@@ -17,6 +17,14 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [products](#products)
   - [movements](#movements)
 - [Data Seeding](#data-seeding)
+  - [Insert a Single Value](#insert-a-single-value)
+  - [Insert Multiple Values](#insert-multiple-values)
+  - [Upsert Exising Values](#upsert-exising-values)
+  - [Reset Data](#reset-data)
+  - [Generate Series](#generate-series)
+  - [Generate Randomic Data](#generate-randomic-data)
+  - [Generate Randomic Timestamp](#generate-randomic-timestamp)
+  - [Work With Regular Expressions](#work-with-regular-expressions)
 
 ---
 
@@ -466,7 +474,78 @@ DO UPDATE SET
 RETURNING *;
 ```
 
-### Generate Randomic Timeserie
+### Generate Randomic Timestamp
+
+Now we need to generate some product movements data.
+
+This is somewhat more tricky for 2 reasons:
+
+1. we want to simulate data over a long span of time, say last month
+2. we want to randomize the `product_id` very much, but we don't want to hard-code the limits of it
+
+To generate a randomic date we can mix `random()` and `interval`:
+
+```sql
+SELECT now() - '30d'::INTERVAL * random();
+```
+
+### Work With Regular Expressions
+
+For the randomization of the `product_id`, we know that the IDs are contiguous, but we also know that they are strings, and that we need to know the highest number that is contained into it.
+
+How do we extract `99` from `p99`?
+
+```sql
+SELECT NULLIF(regexp_replace('p9', '\D','','g'), '')::INT;
+```
+
+So we can get the max value contained into a `product_id`:
+
+```sql
+SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
+FROM "public"."products"
+ORDER BY "id" DESC
+LIMIT 1;
+```
+
+For the `tenants` table we want to use a slightly different approach because we are **less certain** that the last row contains the highest ID:
+
+```sql
+SELECT MAX(NULLIF(regexp_replace("id", '\D','','g'), '')::INT)
+FROM "public"."tenants"
+```
+
+We can put things together and build our seeding query:
+
+```sql
+INSERT INTO "public"."movements"
+  ("tenant_id", "product_id", "created_at", "amount", "note")
+SELECT
+  -- randomic tenant_id in range:
+  CONCAT('t', floor(random() * ((
+    SELECT MAX(NULLIF(regexp_replace("id", '\D','','g'), '')::INT)
+    FROM "public"."tenants"
+  )- 1 + 1) + 1)) AS "tenant_id",
+
+  -- randomic product_id in range:
+  CONCAT('p', floor(random() * ((
+    SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
+    FROM "public"."products"
+    ORDER BY "id" DESC
+    LIMIT 1
+  ) - 1 + 1) + 1)) AS "product_id",
+
+  -- randomic created_at within the last 30 days
+  now() - '30d'::INTERVAL * random() AS "created_at",
+
+  -- randomic amount between -50 and 100 units
+  floor(random() * (100 + 50 + 1) - 50)::int AS "amount",
+
+  -- just a dummy note because we set a non null constraint
+  '-'
+FROM generate_series(1, 10) AS "m"
+RETURNING *
+```
 
 ---
 
@@ -475,3 +554,17 @@ RETURNING *;
 [adminer]: https://www.adminer.org/
 [hasura]: https://hasura.io/
 [graphql]: https://graphql.org/
+
+INSERT INTO "public"."movements"
+("tenant*id", "product_id", "created_at", "amount", "note")
+SELECT
+CONCAT('t', floor(random() * (10 - 1 + 1) + 1)) AS "tenant*id",
+CONCAT('p', floor(random() * ((
+SELECT MAX("id") FROM "public"."products"
+) - 1 + 1) + 1)) AS "product*id",
+now() - '30d'::INTERVAL * random() AS "created*at",
+floor(random() * (100 + 50 + 1) - 50)::int AS "amount",
+'-'
+FROM generate_series(1, 10) AS "m"
+
+;
