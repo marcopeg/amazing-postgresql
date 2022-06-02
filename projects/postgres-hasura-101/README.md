@@ -25,6 +25,13 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [Generate Randomic Data](#generate-randomic-data)
   - [Generate Randomic Timestamp](#generate-randomic-timestamp)
   - [Work With Regular Expressions](#work-with-regular-expressions)
+- [Tracking Tables with Hasura.io](#tracking-tables-with-hasuraio)
+- [Hasura Queries](#hasura-queries)
+  - [Single Table Query](#single-table-query)
+  - [Fetching Related Data](#fetching-related-data)
+  - [Data Aggregation](#data-aggregation)
+  - [Query Params](#query-params)
+  - [Rename Fields & Sub Queries](#rename-fields--sub-queries)
 
 ---
 
@@ -549,22 +556,270 @@ RETURNING *
 
 ---
 
+## Tracking Tables with Hasura.io
+
+In order to expose a GraphQL API over the data structure that we have created, we need to add the proper configuration into Hasura.
+
+1. Go to the "data" tab
+2. Click on the "public" schema
+3. Click "track" on each of the tables we created
+
+![Track tables](./images/track-tables.jpg)
+
+Once Hasura gets to know the tables, it may also offer the possibility to track the _FOREIGN KEYS_ that have been set:
+
+![Track relationships](./images/track-relationships.jpg)
+
+Go ahead and track:
+
+- tenants -> producs
+- products -> movements
+- products -> tenant
+
+---
+
+## Hasura Queries
+
+### Single Table Query
+
+Let's now move into the "API" tab and use the "Explorer" panel to build our first query:
+
+![List tenants](./images/list-tenants.jpg)
+
+```gql
+query listTenants {
+  tenants(order_by: { id: asc }, limit: 3) {
+    name
+  }
+}
+```
+
+### Fetching Related Data
+
+You should notice that you have `products` as a form of available field into your tenants explorer data-structure.
+
+Open it up and select some products as well:
+
+```gql
+query listTenants {
+  tenants(order_by: { id: asc }, limit: 3) {
+    name
+    products(
+      where: { is_visible: { _eq: true } }
+      order_by: { updated_at: desc }
+      limit: 10
+    ) {
+      name
+      price
+    }
+  }
+}
+```
+
+👉 This is possible because we tracked the `tenants -> products` relation that Hasura could identify thanks to the _FOREIGN KEY_ that we have set.
+
+We can take this approach even further and list all the movements that have been recorded for each Product:
+
+```gql
+query listTenants {
+  tenants(order_by: { id: asc }, limit: 3) {
+    name
+    products(
+      where: { is_visible: { _eq: true } }
+      order_by: { updated_at: desc }
+      limit: 10
+    ) {
+      name
+      price
+      movements(order_by: { created_at: asc }) {
+        amount
+        created_at
+      }
+    }
+  }
+}
+```
+
+### Data Aggregation
+
+Getting the list of movements is not really useful, is it?
+
+What we really want is to know **the product's availability**, which is the `SUM()` of all the movements:
+
+```gql
+query listTenants {
+  tenants(order_by: { id: asc }, limit: 3) {
+    name
+    products(
+      where: { is_visible: { _eq: true } }
+      order_by: { updated_at: desc }
+      limit: 10
+    ) {
+      name
+      price
+      movements_aggregate {
+        aggregate {
+          sum {
+            amount
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Query Params
+
+Let's say we want to create a query that returns the informations for a specific product given its ID:
+
+```gql
+query getProduct($productId: String) {
+  products(where: { id: { _eq: $productId } }, limit: 1) {
+    name
+    price
+  }
+}
+```
+
+variables:
+
+{
+"productId":"p1"
+}
+
+### Rename Fields & Sub Queries
+
+With GraphQL and Hasura you can quickly put together quite complex queries that fetch related data from multiple tables, and generate many sub-queries to extract different aggregated values:
+
+- product's fields
+- product's availability out of the movements
+- last 10 movements
+- tenant's name
+- tenant's products stats
+
+```gql
+query getProduct($productId: String!) {
+  product: products_by_pk(id: $productId) {
+    is_visible
+    name
+    description
+    price
+    updated_at
+    created_at
+    available_items: movements_aggregate {
+      aggregate {
+        sum {
+          amount
+        }
+      }
+    }
+    last_movements: movements(order_by: { created_at: desc }, limit: 5) {
+      created_at
+      amount
+      note
+    }
+    tenant {
+      id
+      name
+      total_products: products_aggregate {
+        aggregate {
+          count(columns: id)
+        }
+      }
+      visible_products: products_aggregate(
+        where: { is_visible: { _eq: true } }
+      ) {
+        aggregate {
+          count(columns: id)
+        }
+      }
+      hidden_products: products_aggregate(
+        where: { is_visible: { _eq: false } }
+      ) {
+        aggregate {
+          count(columns: id)
+        }
+      }
+    }
+  }
+}
+```
+
+The output looks something like:
+
+```json
+{
+  "data": {
+    "product": {
+      "is_visible": true,
+      "name": "Product1",
+      "description": "Description for product1",
+      "price": 80,
+      "updated_at": "2022-06-02T07:02:02.400745+00:00",
+      "created_at": "2022-06-02T07:02:02.400745+00:00",
+      "available_items": {
+        "aggregate": {
+          "sum": {
+            "amount": 192
+          }
+        }
+      },
+      "last_movements": [
+        {
+          "created_at": "2022-06-02T04:25:09.963454+00:00",
+          "amount": -33,
+          "note": "-"
+        },
+        {
+          "created_at": "2022-06-02T01:22:39.041886+00:00",
+          "amount": 38,
+          "note": "-"
+        },
+        {
+          "created_at": "2022-06-01T07:58:44.505914+00:00",
+          "amount": 52,
+          "note": "-"
+        },
+        {
+          "created_at": "2022-05-29T17:33:32.004624+00:00",
+          "amount": -49,
+          "note": "-"
+        },
+        {
+          "created_at": "2022-05-24T02:13:33.322909+00:00",
+          "amount": 76,
+          "note": "-"
+        }
+      ],
+      "tenant": {
+        "id": "t3",
+        "name": "Tenant3",
+        "total_products": {
+          "aggregate": {
+            "count": 8
+          }
+        },
+        "visible_products": {
+          "aggregate": {
+            "count": 6
+          }
+        },
+        "hidden_products": {
+          "aggregate": {
+            "count": 2
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
 [docker-compose]: https://docs.docker.com/compose/
 [yaml]: https://en.wikipedia.org/wiki/YAML
 [adminer]: https://www.adminer.org/
 [hasura]: https://hasura.io/
 [graphql]: https://graphql.org/
-
-INSERT INTO "public"."movements"
-("tenant*id", "product_id", "created_at", "amount", "note")
-SELECT
-CONCAT('t', floor(random() * (10 - 1 + 1) + 1)) AS "tenant*id",
-CONCAT('p', floor(random() * ((
-SELECT MAX("id") FROM "public"."products"
-) - 1 + 1) + 1)) AS "product*id",
-now() - '30d'::INTERVAL * random() AS "created*at",
-floor(random() * (100 + 50 + 1) - 50)::int AS "amount",
-'-'
-FROM generate_series(1, 10) AS "m"
-
-;
