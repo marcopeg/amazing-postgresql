@@ -56,6 +56,10 @@ The following notes are written using MacOS as running environment and assume yo
 
 👉 [Read about the general prerequisites here. 🔗](../../README.md#prerequisites-for-running-the-examples)
 
+👉 [You can also do it on a GitPod.io Workspace! 🔗](https://gitpod.io#https://github.com/marcopeg/gitpod-workspace)
+
+[![Open in GitPod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io#https://github.com/marcopeg/gitpod-workspace)
+
 ---
 
 ## Run the Project
@@ -1349,6 +1353,8 @@ ON "movements" ("product_id" ASC);
 
 ---
 
+[docker]: https://docker.com
+[make]: https://opensource.com/article/18/8/what-how-makefile
 [docker-compose]: https://docs.docker.com/compose/
 [yaml]: https://en.wikipedia.org/wiki/YAML
 [adminer]: https://www.adminer.org/
