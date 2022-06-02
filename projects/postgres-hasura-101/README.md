@@ -32,6 +32,12 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [Data Aggregation](#data-aggregation)
   - [Query Params](#query-params)
   - [Rename Fields & Sub Queries](#rename-fields--sub-queries)
+- [Hasura Mutations](#hasura-mutations)
+  - [Insert Single Record](#insert-single-record)
+  - [Insert Single Record (variant)](#insert-single-record-variant)
+  - [Insert Multiple Records](#insert-multiple-records)
+  - [Insert Nested Data](#insert-nested-data)
+- [Custom Relationships on Multiple Fields](#custom-relationships-on-multiple-fields)
 
 ---
 
@@ -572,9 +578,9 @@ Once Hasura gets to know the tables, it may also offer the possibility to track 
 
 Go ahead and track:
 
-- tenants -> producs
-- products -> movements
-- products -> tenant
+- tenants -> [producs]
+- products -> [movements]
+- products -> tenants
 
 ---
 
@@ -815,6 +821,306 @@ The output looks something like:
   }
 }
 ```
+
+---
+
+## Hasura Mutations
+
+### Insert Single Record
+
+```gql
+mutation addTenant($id: String!, $name: String!) {
+  tenant: insert_tenants_one(
+    object: { id: $id, name: $name }
+    on_conflict: { constraint: tenants_pkey, update_columns: name }
+  ) {
+    id
+    name
+  }
+}
+```
+
+variables:
+
+```json
+{
+  "id": "mpe",
+  "name": "Marco Peg"
+}
+```
+
+output:
+
+```json
+{
+  "data": {
+    "tenant": {
+      "id": "mpe",
+      "name": "Marco Peg"
+    }
+  }
+}
+```
+
+🚧 Play out with the conflict management, remove it, learn about Hasura errors.
+
+### Insert Single Record (variant)
+
+This mutation still inserts one single record:
+
+```gql
+mutation addTenant($id: String!, $name: String!) {
+  tenants: insert_tenants(
+    objects: { id: $id, name: $name }
+    on_conflict: { constraint: tenants_pkey, update_columns: name }
+  ) {
+    affected_rows
+    records: returning {
+      id
+      name
+    }
+  }
+}
+```
+
+variables:
+
+```json
+{
+  "id": "mpe",
+  "name": "Marco Peg"
+}
+```
+
+output:
+
+```json
+{
+  "data": {
+    "tenants": {
+      "affected_rows": 1,
+      "records": [
+        {
+          "id": "mpe",
+          "name": "Marco Peg"
+        }
+      ]
+    }
+  }
+}
+```
+
+### Insert Multiple Records
+
+So far we played with a simple data type to characterize our input: `String`.
+
+But Hasura builds more complex data types based on the schema that we provide.
+
+Use the "Docs" panel on the right side of the GraphiQL editor, and navigate to (or search) the `insert_tenants` definition:
+
+![Add tenants docs](./images/add-tenants-docs.jpg)
+
+With this new information we can upgrade our mutation and receive a list of values that we want to upsert:
+
+```gql
+mutation addTenants($data: [tenants_insert_input!]!) {
+  tenants: insert_tenants(
+    objects: $data
+    on_conflict: { constraint: tenants_pkey, update_columns: name }
+  ) {
+    affected_rows
+    records: returning {
+      id
+      name
+    }
+  }
+}
+```
+
+variables:
+
+```json
+{
+  "data": [
+    {
+      "id": "mpe",
+      "name": "Marco Peg"
+    },
+    {
+      "id": "lsk",
+      "name": "Luke Skywalker"
+    }
+  ]
+}
+```
+
+output:
+
+```json
+{
+  "data": {
+    "tenants": {
+      "affected_rows": 2,
+      "records": [
+        {
+          "id": "mpe",
+          "name": "Marco Peg"
+        },
+        {
+          "id": "lsk",
+          "name": "Luke Skywalker"
+        }
+      ]
+    }
+  }
+}
+```
+
+### Insert Nested Data
+
+Thanks to the data relations it is possible to insert nested data in one single mutation:
+
+```gql
+mutation addTenants(
+  $id: String!
+  $name: String!
+  $products: [products_insert_input!]!
+) {
+  tenant: insert_tenants(
+    objects: {
+      id: $id
+      name: $name
+      products: {
+        data: $products
+        on_conflict: {
+          constraint: products_pkey
+          update_columns: [price, name, description]
+        }
+      }
+    }
+    on_conflict: { constraint: tenants_pkey, update_columns: name }
+  ) {
+    affected_rows
+    records: returning {
+      id
+      name
+      products(where: { updated_at: { _eq: "now()" } }) {
+        id
+        is_visible
+        name
+        price
+        created_at
+        updated_at
+        movements(where: { created_at: { _eq: "now()" } }) {
+          id
+          created_at
+          amount
+          note
+        }
+      }
+    }
+  }
+}
+```
+
+variables:
+
+```json
+{
+  "id": "mpe",
+  "name": "Marco Peg",
+  "products": [
+    {
+      "id": "mpe_p1",
+      "name": "First Product",
+      "description": "First product from Marco",
+      "price": 10,
+      "movements": {
+        "data": [
+          {
+            "amount": 1,
+            "note": "First load",
+            "tenant_id": "mpe"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mpe_p2",
+      "name": "Second Product",
+      "description": "Second product from Marco",
+      "price": 10
+    }
+  ]
+}
+```
+
+🔥 Note that we must replicate the `tenant_id`. That is because the relation `product -> movements` is only set on the `id` field.
+
+output:
+
+```json
+{
+  "data": {
+    "tenant": {
+      "affected_rows": 4,
+      "records": [
+        {
+          "id": "mpe",
+          "name": "Marco Peg",
+          "products": [
+            {
+              "id": "mpe_p1",
+              "is_visible": true,
+              "name": "First Product",
+              "price": 10,
+              "created_at": "2022-06-02T08:42:13.483459+00:00",
+              "updated_at": "2022-06-02T08:49:15.807776+00:00",
+              "movements": [
+                {
+                  "id": 11087,
+                  "created_at": "2022-06-02T08:49:15.807776+00:00",
+                  "amount": 1,
+                  "note": "First load"
+                }
+              ]
+            },
+            {
+              "id": "mpe_p2",
+              "is_visible": true,
+              "name": "Second Product",
+              "price": 10,
+              "created_at": "2022-06-02T08:43:51.169635+00:00",
+              "updated_at": "2022-06-02T08:49:15.807776+00:00",
+              "movements": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+---
+
+## Custom Relationships on Multiple Fields
+
+We want to improve the [Insert Nested Data](#insert-nested-data) mutation and avoid the need to duplicate the `tenant_id` inside each _movement_.
+
+To achieve this, we need to setup a custom relationship between `products -> movements` and explain to hasura that both `product.id -> movement.product_id` and `product.tenant_id -> movement.tenant_id`.
+
+1. Go to the "Data" tab
+2. Click on the "Products" table from the left menu
+3. Click on the "Relationships" tab
+4. Under the "Array relationships", click "Edit" on movements
+5. Remove the relationship
+
+Now that you have removed the default relationship that Hasura did setup thanks to our _FOREIGN KEYS_, you can click on "Add a new relationship manually -> Configure":
+
+![Relationship on multiple fields](./images/relationship-on-multiple-fields.jpg)
+
+Once you have saved, you can go back to that [Insert Nested Data](#insert-nested-data) Mutation and remove the duplicated `tenant_id` from the movements rows.
 
 ---
 
