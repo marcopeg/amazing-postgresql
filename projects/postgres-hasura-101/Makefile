@@ -12,7 +12,7 @@ logs:
 
 clear: stop
 	@echo "Destroy local data..."
-	@rm -rf .docker-data
+	@sudo rm -rf .docker-data
 
 restart: stop start
 reset: stop clear start

@@ -1482,7 +1482,116 @@ When you need it, you can re-import it.
 
 👉 This is a rather simple way for keeping in sync 2 instances, say _development_ and _production_. It's ok to do it like that in the beginning.
 
-### Export Metadata Via CLI
+### Hasura CLI
+
+Hasura ships an utility tool that facilitates the management of the service. We are going to use it for:
+
+- manage Hasura's state as code
+- manage the Postgre's schema as code
+- run a super-charged Hasura console
+
+🔗 [Click here for the official docs.](https://hasura.io/docs/latest/graphql/core/hasura-cli/index/)
+
+### Install Hasura CLI
+
+The following command works on Linux (so GitPod.io) and on a Mac. _Windows users should run it through WSL2._
+
+```bash
+curl -L https://github.com/hasura/graphql-engine/raw/stable/cli/get.sh | bash
+```
+
+This will yield a new command available on you terminal:
+
+```bash
+hasura --help
+```
+
+![hasura help](./images/hasura-help.jpg)
+
+### Initialize From a Running Instance
+
+We have been playing around with Postgres and Hasura for a while now and we definitely don't want to lose all the informations we've build.
+
+> 😅 Just imagine having to redo all those clickings to set up permissions!
+
+Here is the command to run:
+
+```bash
+hasura init \
+  hasura-ecomm \
+  --endpoint http://localhost:8080 \
+  --admin-secret hasura
+```
+
+`hasura-ecomm` is the name of the folder where we want to collect our state informations. Hasura will create it for you.
+
+👉 This folder name is also **referred as "project"** and we will use it as parameter in the upcoming commands.
+
+The options `endpoint` and `admin-secret` will be saved in a `config.yaml` file inside the
+
+### Hasura Project Structure
+
+Hasura manages its own state using 3 folders:
+
+- migrations
+- metadata
+- seeds
+
+`migrations` contain versioned SQL instructions the should be able to rebuild the entire Postgres schema from scratch.
+
+Migrations support multiple databases, and they target only the structure of the project.
+
+👉 Migrations don't handle data
+
+`metadata` contains a snapshot of all the rules that you have set up in your Hasura Console. _You should version this files yourself using Git or similar tools_.
+
+`seeds` contains SQL instructions that are meant to reproduce an initial set of contents for your project. Use it for populating static data (list of countries?!?) or to manage development data. Seeds also support multiple databases.
+
+### Export Hasura Metadata
+
+Every time you operate the Hasura Console and change some rules, you should then export the metatata to your state-as-code project:
+
+```bash
+hasura metadata export --project hasura-ecomm
+```
+
+👉 I launch my commands from the `postgres-hasura-101` folder, so I must tell HasuraCLI the state folder (or "project") that I want to refer to.
+
+👉 The "project" option makes it easy to manage multiple Hasura projects (or instances) from one single codebase.
+
+👉 When you refer to a project, most of the CLI information are stored in its `config.yaml`, but you can always override those with params such as `--endpoint` or `--admin-secret` as so to target a differe instance (staging? production?) using your local source code. It's a neat way to keep different environments in sync.
+
+### Export PostgreSQL Schema
+
+### Import PostgreSQL Schema
+
+The following command will attempt to apply all the missing migrations from a local project (data) to a remote Hasura instance (state), for any connected database:
+
+```bash
+hasura migrate apply \
+  --project hasura-ecomm \
+  --all-databases \
+  --endpoint https://8080-marcopeg-gitpodworkspac-p4mfojujqrp.ws-eu46.gitpod.io
+```
+
+Once done you can check the status of your migrations:
+
+```bash
+hasura migrate status \
+  --project hasura-ecomm \
+  --database-name default \
+  --endpoint https://8080-marcopeg-gitpodworkspac-p4mfojujqrp.ws-eu46.gitpod.io
+```
+
+👉 The version name of an Hasura Migration is the timestamp that prefixes the full folder name, after that, you can give your migrations a name as well, but that is only intended for human readability only.
+
+### Import Hasura Metadata
+
+```bash
+hasura metadata apply \
+  --project hasura-ecomm \
+  --endpoint https://8080-marcopeg-gitpodworkspac-p4mfojujqrp.ws-eu46.gitpod.io
+```
 
 ---
 
