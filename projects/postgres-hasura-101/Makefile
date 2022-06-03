@@ -1,3 +1,5 @@
+seed?=dummy
+
 start:
 	@echo "Starting the project..."
 	@docker-compose up -d
@@ -21,4 +23,4 @@ init:
 	@echo "Initializing the project state..."
 	hasura migrate apply --all-databases --project hasura-ecomm
 	hasura metadata apply --project hasura-ecomm
-	hasura seed apply --database-name default --project hasura-ecomm
+	hasura seed apply --database-name default --project hasura-ecomm --file $(seed).sql

@@ -1,6 +1,7 @@
 SET check_function_bodies = false;
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
 CREATE FUNCTION public.set_current_timestamp_updated_at() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -9,12 +10,14 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
 CREATE SEQUENCE public.movements_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     MAXVALUE 2147483647
     CACHE 1;
+    
 CREATE TABLE public.movements (
     id integer DEFAULT nextval('public.movements_id_seq'::regclass) NOT NULL,
     tenant_id text NOT NULL,

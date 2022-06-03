@@ -1679,11 +1679,134 @@ You can also target one speficic seed file with the `--file` flag:
 
 ```bash
 hasura seed apply \
-  --file 1654243904028_dummy-data.sql \
+  --file dummy.sql \
   --database-name default \
   --project hasura-ecomm \
   --endpoint https://your-production-instance.com
 ```
+
+---
+
+## Customers & Orders
+
+It is now time to approach our business from the Customer's point of view:
+
+- Search through the available products
+- Add products to a shopping cart
+- Place an order
+
+They seem to be quite straightforward activities but things are often a bit more tricky than what they seem.
+
+### The Availability Issue
+
+Of course, we want to show whether a product is available or not. But the system that we haved designed so far keeps this information in the form of a history of buy/sell documents. An inventory.
+
+Although it is technically doable to create a view that puts together products, tenants, and availability, that solution won't scale when it comes to a shop the size of Amazon.
+
+🚧 We need some form of cache 🚧
+
+But when a Customer want to place an item into the shopping cart, it would be nice to actually provide an updated information and communicate as early as possibile if there is any issue with the cached availability.
+
+We could even take this a step forward, and consider an item that got placed into a shopping cart as "virtually placed", so that information should also affect the real-time availability.
+
+But then a shopping cart should have a timeout else products will be out of stock forever... just because they stay into sleeping shopping carts!
+
+As you can see, it's a damn problem.
+
+### Multi Tenant Order
+
+A Custome should be able to compose an order with Products that come from different Tenants, but when the order is placed, there is the need to generate the proper Inventory Movement documents associated with the Order.
+
+Again, there is logic to be placed around this problem.
+
+### Backend-less Approach
+
+There are many different approaches to the problems that I have listed, and many folks try to solve them with some kind of App written in Java, Node, or AWS Lambdas (if it's serversless is cool, right?)
+
+In this tutorial we will attempt the "backend-less" approach.
+
+👉 We stick to SQL as the Application Layer  
+👉 And Hasura as API and Authorization layer
+
+---
+
+## Public Products View
+
+The first step is to create a View that could be used to list and search products for the public:
+
+- it should contain the Product's information
+- it should contain the Vendor's information (tenant)
+- it should contain the Availability information (calculated)
+
+Luckily, we have already created a _materialized view_ that stores a cached version of the availability: `products_availability_cached`.
+
+### Recursive Materialized Views
+
+We can _JOIN_ this cached table and generate a dataset that is suitable for general public consumption:
+
+```sql
+CREATE MATERIALIZED VIEW "products_public_cached" AS
+SELECT
+  "t"."id" AS "tenant_id",
+  "t"."name" AS "tenant_name",
+  "p"."id" AS "product_id",
+  "p"."name" AS "name",
+  "p"."description" AS "description",
+  "p"."price" AS "price",
+  COALESCE("a"."amount", 0) AS "availability_amount",
+  COALESCE("a"."updated_at", '1970-01-01') AS "availability_updated_at",
+  "p"."updated_at" AS "updated_at"
+
+FROM "public"."products" AS "p"
+LEFT JOIN "public"."tenants" AS "t" ON "p"."tenant_id" = "t"."id"
+LEFT JOIN "public"."products_availability_cached" AS "a" ON "a"."product_id" = "p"."id"
+
+WHERE "p"."is_visible" IS TRUE;
+```
+
+There are a few consideration that need to be pointe out:
+
+1. This materialized view relies upon another materialized view, so **the refresh order matters**. It's a progressive cache layer.
+2. We are going to duplicate the entire Tenants AND Products table for sake of performances. But keep an eye on disk space.
+3. Just having a dedicated table won't suffice. You need also to carefully plan your indexes.
+
+To get a full refresh of this view you will need to:
+
+```sql
+REFRESH MATERIALIZED VIEW "products_availability_cached";
+REFRESH MATERIALIZED VIEW "products_public_cached";
+```
+
+### Refresh Materialized View Concurrently
+
+The big advantage of having one materialized view that relies on another is the way we can refresh them.
+
+Refreshing a materialized view can take long time, and tipically the view is not accessible during this time. This is a bad news for our e-commerce as we want Customers to navigate through it 24/7, with data that is as updated as it can be.
+
+There is a simple trick that can take you a long way into big data.
+
+We can refresh `products_availability_cached` once every couple of hours with a _CRON JOB_ and we don't care much that this is a heavy and blocking operation because nobody directly consumes this view.
+
+Then we can add a _UNIQUE INDEX_ to `products_public_cached`:
+
+```sql
+CREATE UNIQUE INDEX "products_public_cached_pk"
+ON "products_public_cached" ("product_id", "tenant_id");
+```
+
+And with this index in place, we can now refresh this view with the _CONCURRENTLY_ flag:
+
+```sql
+REFRESH MATERIALIZED VIEW CONCURRENTLY "products_public_cached";
+```
+
+The refresh iteself will take longer time, but the data will be accessibile all through out the refresh process.
+
+Our Customers will be able to get as fresh data as possibile, with a very simple mechanism behind the scene.
+
+### Track The Public Products View
+
+### The Anonymous Role
 
 ---
 
