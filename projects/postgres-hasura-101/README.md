@@ -64,6 +64,11 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [Import Hasura Metadata](#import-hasura-metadata)
   - [Create a Seed File](#create-a-seed-file)
   - [Seed Data](#seed-data)
+- [Public Products View](#public-products-view)
+  - [Recursive Materialized Views](#recursive-materialized-views)
+  - [Refresh Materialized View Concurrently](#refresh-materialized-view-concurrently)
+  - [Track The Public Products View](#track-the-public-products-view)
+  - [The Anonymous Role](#the-anonymous-role)
 
 ---
 
