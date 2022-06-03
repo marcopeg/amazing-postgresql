@@ -298,7 +298,7 @@ BEGIN
   NEW."updated_at" = NOW();
   RETURN NEW;
 END;
-$$
+$$;
 
 CREATE TRIGGER "set_public_products_updated_at"
 BEFORE UPDATE ON "public"."products"
@@ -586,7 +586,7 @@ SELECT
 
   -- just a dummy note because we set a non null constraint
   '-'
-FROM generate_series(1, 10) AS "m"
+FROM generate_series(1, 10000) AS "m"
 RETURNING *
 ```
 
