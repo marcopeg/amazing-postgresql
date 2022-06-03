@@ -1,0 +1,73 @@
+table:
+  schema: public
+  name: products
+object_relationships:
+  - name: availability_live
+    using:
+      manual_configuration:
+        remote_table:
+          schema: public
+          name: products_availability_live
+        insertion_order: null
+        column_mapping:
+          id: product_id
+  - name: tenant
+    using:
+      foreign_key_constraint_on: tenant_id
+array_relationships:
+  - name: movements
+    using:
+      manual_configuration:
+        remote_table:
+          schema: public
+          name: movements
+        insertion_order: null
+        column_mapping:
+          tenant_id: tenant_id
+          id: product_id
+insert_permissions:
+  - role: tenant
+    permission:
+      check: {}
+      set:
+        tenant_id: x-hasura-tenant-id
+      columns:
+        - description
+        - id
+        - is_visible
+        - name
+        - price
+      backend_only: false
+select_permissions:
+  - role: tenant
+    permission:
+      columns:
+        - created_at
+        - description
+        - id
+        - is_visible
+        - name
+        - price
+        - updated_at
+      filter:
+        tenant_id:
+          _eq: x-hasura-tenant-id
+      limit: 25
+update_permissions:
+  - role: tenant
+    permission:
+      columns:
+        - description
+        - is_visible
+        - name
+        - price
+      filter:
+        tenant_id:
+          _eq: x-hasura-tenant-id
+      check: null
+delete_permissions:
+  - role: tenant
+    permission:
+      filter:
+        tenant_id:
+          _eq: x-hasura-tenant-id

@@ -1,0 +1,18 @@
+table:
+  schema: public
+  name: tenants
+array_relationships:
+  - name: movements
+    using:
+      foreign_key_constraint_on:
+        column: tenant_id
+        table:
+          schema: public
+          name: movements
+  - name: products
+    using:
+      foreign_key_constraint_on:
+        column: tenant_id
+        table:
+          schema: public
+          name: products

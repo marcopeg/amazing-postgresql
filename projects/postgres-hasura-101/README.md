@@ -54,7 +54,16 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [Propagating Permissions](#propagating-permissions)
 - [Backup & Restore](#backup--restore)
   - [Manually Import/Export Metadata](#manually-importexport-metadata)
-  - [Export Metadata Via CLI](#export-metadata-via-cli)
+  - [The Hasura CLI](#the-hasura-cli)
+  - [Install Hasura CLI](#install-hasura-cli)
+  - [Initialize Your Codebase From a Running Instance](#initialize-your-codebase-from-a-running-instance)
+  - [Hasura Project Structure](#hasura-project-structure)
+  - [Export PostgreSQL Schema](#export-postgresql-schema)
+  - [Export Hasura Metadata](#export-hasura-metadata)
+  - [Import PostgreSQL Schema](#import-postgresql-schema)
+  - [Import Hasura Metadata](#import-hasura-metadata)
+  - [Create a Seed File](#create-a-seed-file)
+  - [Seed Data](#seed-data)
 
 ---
 
@@ -1482,7 +1491,7 @@ When you need it, you can re-import it.
 
 👉 This is a rather simple way for keeping in sync 2 instances, say _development_ and _production_. It's ok to do it like that in the beginning.
 
-### Hasura CLI
+### The Hasura CLI
 
 Hasura ships an utility tool that facilitates the management of the service. We are going to use it for:
 
@@ -1508,7 +1517,7 @@ hasura --help
 
 ![hasura help](./images/hasura-help.jpg)
 
-### Initialize From a Running Instance
+### Initialize Your Codebase From a Running Instance
 
 We have been playing around with Postgres and Hasura for a while now and we definitely don't want to lose all the informations we've build.
 
@@ -1547,12 +1556,53 @@ Migrations support multiple databases, and they target only the structure of the
 
 `seeds` contains SQL instructions that are meant to reproduce an initial set of contents for your project. Use it for populating static data (list of countries?!?) or to manage development data. Seeds also support multiple databases.
 
+### Export PostgreSQL Schema
+
+HasuraCLI is quite good at taking a full snapshot of all the relevant schema information that you have created in your database:
+
+```bash
+hasura migrate create \
+  "full-schema" \
+  --from-server \
+  --database-name default \
+  --project hasura-ecomm \
+  --endpoint https://your-development-instance.com
+```
+
+This command will generate a new migration folder containing only an `up.sql` file that is the SQL source code for all your database schema.
+
+Once done you can check the status of your migrations:
+
+```bash
+hasura migrate status \
+  --database-name default \
+  --project hasura-ecomm \
+  --endpoint https://your-development-instance.com
+```
+
+👉 It is important to check that your full export is applied as the last available migration, else you may end up into troubles later:
+
+![Full state migration](./images/full-state-migration.jpg)
+
+If this is not the case, you probably want to explicitly set this migration as applied:
+
+```bash
+hasura migrate apply \
+  --version "1654242328796" \
+  --skip-execution \
+  --database-name default \
+  --project hasura-ecomm \
+  --endpoint https://your-development-instance.com
+```
+
 ### Export Hasura Metadata
 
 Every time you operate the Hasura Console and change some rules, you should then export the metatata to your state-as-code project:
 
 ```bash
-hasura metadata export --project hasura-ecomm
+hasura metadata export \
+  --project hasura-ecomm \
+  --endpoint https://your-development-instance.com
 ```
 
 👉 I launch my commands from the `postgres-hasura-101` folder, so I must tell HasuraCLI the state folder (or "project") that I want to refer to.
@@ -1561,36 +1611,78 @@ hasura metadata export --project hasura-ecomm
 
 👉 When you refer to a project, most of the CLI information are stored in its `config.yaml`, but you can always override those with params such as `--endpoint` or `--admin-secret` as so to target a differe instance (staging? production?) using your local source code. It's a neat way to keep different environments in sync.
 
-### Export PostgreSQL Schema
-
 ### Import PostgreSQL Schema
 
 The following command will attempt to apply all the missing migrations from a local project (data) to a remote Hasura instance (state), for any connected database:
 
 ```bash
 hasura migrate apply \
-  --project hasura-ecomm \
   --all-databases \
-  --endpoint https://8080-marcopeg-gitpodworkspac-p4mfojujqrp.ws-eu46.gitpod.io
+  --project hasura-ecomm \
+  --endpoint https://your-production-instance.com
 ```
 
 Once done you can check the status of your migrations:
 
 ```bash
 hasura migrate status \
-  --project hasura-ecomm \
   --database-name default \
-  --endpoint https://8080-marcopeg-gitpodworkspac-p4mfojujqrp.ws-eu46.gitpod.io
+  --project hasura-ecomm \
+  --endpoint https://your-production-instance.com
 ```
 
 👉 The version name of an Hasura Migration is the timestamp that prefixes the full folder name, after that, you can give your migrations a name as well, but that is only intended for human readability only.
 
 ### Import Hasura Metadata
 
+The following command will flash the YAML definition of a project to a remote running Hasura instance:
+
 ```bash
 hasura metadata apply \
   --project hasura-ecomm \
-  --endpoint https://8080-marcopeg-gitpodworkspac-p4mfojujqrp.ws-eu46.gitpod.io
+  --endpoint https://your-production-instance.com
+```
+
+If you want to be particularly sure, you can also force a full metadata reload to your server:
+
+```bash
+hasura metadata reload \
+  --project hasura-ecomm \
+  --endpoint https://your-production-instance.com
+```
+
+### Create a Seed File
+
+HasuraCLI offers a guided procedure for adding seed files to your project:
+
+```bash
+hasura seed create \
+  "dummy-data" \
+  --database-name default \
+  --project hasura-ecomm
+```
+
+👉 This will use your terminal editor, learn `vi`!
+
+### Seed Data
+
+The last step would be to apply the local seed files to our remote instance:
+
+```bash
+hasura seed apply \
+  --database-name default \
+  --project hasura-ecomm \
+  --endpoint https://your-production-instance.com
+```
+
+You can also target one speficic seed file with the `--file` flag:
+
+```bash
+hasura seed apply \
+  --file 1654243904028_dummy-data.sql \
+  --database-name default \
+  --project hasura-ecomm \
+  --endpoint https://your-production-instance.com
 ```
 
 ---

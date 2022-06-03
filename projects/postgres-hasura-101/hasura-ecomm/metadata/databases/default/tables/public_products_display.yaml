@@ -1,0 +1,18 @@
+table:
+  schema: public
+  name: products_display
+select_permissions:
+  - role: tenant
+    permission:
+      columns:
+        - amount
+        - created_at
+        - description
+        - id
+        - name
+        - price
+        - updated_at
+      filter:
+        tenant_id:
+          _eq: x-hasura-tenant-id
+      limit: 25

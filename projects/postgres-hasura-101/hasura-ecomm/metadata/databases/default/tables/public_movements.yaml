@@ -1,0 +1,34 @@
+table:
+  schema: public
+  name: movements
+object_relationships:
+  - name: product
+    using:
+      foreign_key_constraint_on: product_id
+  - name: tenant
+    using:
+      foreign_key_constraint_on: tenant_id
+insert_permissions:
+  - role: tenant
+    permission:
+      check: {}
+      set:
+        tenant_id: x-hasura-tenant-id
+      columns:
+        - amount
+        - note
+        - product_id
+      backend_only: false
+select_permissions:
+  - role: tenant
+    permission:
+      columns:
+        - amount
+        - created_at
+        - id
+        - note
+        - product_id
+      filter:
+        tenant_id:
+          _eq: x-hasura-tenant-id
+      limit: 25

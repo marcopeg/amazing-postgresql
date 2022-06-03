@@ -16,3 +16,9 @@ clear: stop
 
 restart: stop start
 reset: stop clear start
+
+init:
+	@echo "Initializing the project state..."
+	hasura migrate apply --all-databases --project hasura-ecomm
+	hasura metadata apply --project hasura-ecomm
+	hasura seed apply --database-name default --project hasura-ecomm
