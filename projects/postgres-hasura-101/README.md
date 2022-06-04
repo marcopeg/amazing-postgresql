@@ -69,6 +69,7 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [Refresh Materialized View Concurrently](#refresh-materialized-view-concurrently)
   - [Expose The Public Products View](#expose-the-public-products-view)
   - [Derive a REST Endpoint From a GraphQL Query](#derive-a-rest-endpoint-from-a-graphql-query)
+  - [Parametrized REST Endpoint](#parametrized-rest-endpoint)
 
 ---
 
@@ -1827,6 +1828,73 @@ When you have completed those steps, you can move back to your "API" tab, and co
 ![hasura anonymous request](./images/hasura-anonymous-request.jpg)
 
 ### Derive a REST Endpoint From a GraphQL Query
+
+In this step we are going to turn a GraphQL Query into a public REST endpoint.
+
+First, we need to tune a GraphQL query that returns the data we want to expose:
+
+```gql
+query publicProducts {
+  products: products_public_cached(order_by: { id: asc }) {
+    id
+    name
+    description
+    price
+    updated_at
+    availability_amount
+    availability_updated_at
+    tenant_id
+    tenant_name
+  }
+}
+```
+
+Once we are satisfied, we can click on the "REST" button to configure a REST endpoint on this query:
+
+![graphql to rest](./images/graphql-to-rest.jpg)
+
+From here, it's just a matter of setting up the endpoint details:
+
+![rest-public-products](./images/rest-public-products.jpg)
+
+Now you can copy the endpoint's url and test it on any REST compliant client like Chrome or Postman!
+
+### Parametrized REST Endpoint
+
+Of course, the endpoint that we set up will return only the first 25 products, as we set up this limit for the _anonymous_ user in our view's permissions.
+
+So we need to refine this query, as to allow a simple **offset pagination**:
+
+```gql
+query publicProducts($offset: Int!) {
+  products: products_public_cached(order_by: { id: asc }, offset: $offset) {
+    id
+    name
+    description
+    price
+    updated_at
+    availability_amount
+    availability_updated_at
+    tenant_id
+    tenant_name
+  }
+}
+```
+
+![public-products-offset](./images/public-products-offset.jpg)
+
+Then, moving into the REST configuration again, we can setup a parametrized endpoint that supports pagination:
+
+![rest-public-products-offset](./images/rest-public-products-offset-param.jpg)
+
+Now I can run the following public requests:
+
+```
+http://localhost:8080/api/rest/public/products
+http://localhost:8080/api/rest/public/products/25
+```
+
+> 👉 It is important to note that the client App must be aware that the pagination is set to 25 items in order to compute the correct offset parameter. Of course, we can provide an endpoint in which both _limit_ and _offset_ are available, as well as an endpoint in which the _lastId_ is provided for implementing a cursor-based pagination.
 
 ---
 
