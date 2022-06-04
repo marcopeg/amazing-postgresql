@@ -67,8 +67,8 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
 - [Public Products View](#public-products-view)
   - [Recursive Materialized Views](#recursive-materialized-views)
   - [Refresh Materialized View Concurrently](#refresh-materialized-view-concurrently)
-  - [Track The Public Products View](#track-the-public-products-view)
-  - [The Anonymous Role](#the-anonymous-role)
+  - [Expose The Public Products View](#expose-the-public-products-view)
+  - [Derive a REST Endpoint From a GraphQL Query](#derive-a-rest-endpoint-from-a-graphql-query)
 
 ---
 
@@ -178,6 +178,7 @@ hasura:
     HASURA_GRAPHQL_DEV_MODE: "true"
     HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
     HASURA_GRAPHQL_ADMIN_SECRET: "${HASURA_ADMIN_SECRET:-hasura}"
+    HASURA_GRAPHQL_UNAUTHORIZED_ROLE: "anonymous"
     HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
     HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
     HASURA_GRAPHQL_ENABLE_TELEMETRY: "false"
@@ -1754,7 +1755,7 @@ CREATE MATERIALIZED VIEW "products_public_cached" AS
 SELECT
   "t"."id" AS "tenant_id",
   "t"."name" AS "tenant_name",
-  "p"."id" AS "product_id",
+  "p"."id" AS "id",
   "p"."name" AS "name",
   "p"."description" AS "description",
   "p"."price" AS "price",
@@ -1809,9 +1810,23 @@ The refresh iteself will take longer time, but the data will be accessibile all 
 
 Our Customers will be able to get as fresh data as possibile, with a very simple mechanism behind the scene.
 
-### Track The Public Products View
+### Expose The Public Products View
 
-### The Anonymous Role
+The first step is to track the newly created view from the "Data -> Default -> Public" page.
+
+Then you can move into the "Permission" tab and setup a new role called "anonymous":
+
+![anonymous role](./images/anonymous-role.jpg)
+
+> 👉 You have to [setup the _anonymous_ role](https://hasura.io/docs/latest/graphql/core/auth/authentication/unauthenticated-access/) as configuration to your running instance.
+
+![hasura anonymous](./images/hasura-anonymous.jpg)
+
+When you have completed those steps, you can move back to your "API" tab, and configure it as so to simulate an anonymous request to your GraphQL API:
+
+![hasura anonymous request](./images/hasura-anonymous-request.jpg)
+
+### Derive a REST Endpoint From a GraphQL Query
 
 ---
 
