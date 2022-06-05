@@ -1,0 +1,18 @@
+table:
+  schema: public
+  name: products_public_cached
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - availability_amount
+        - price
+        - description
+        - id
+        - name
+        - tenant_id
+        - tenant_name
+        - availability_updated_at
+        - updated_at
+      filter: {}
+      limit: 25

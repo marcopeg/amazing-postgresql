@@ -3,4 +3,5 @@
 - "!include public_products_availability_cached.yaml"
 - "!include public_products_availability_live.yaml"
 - "!include public_products_display.yaml"
+- "!include public_products_public_cached.yaml"
 - "!include public_tenants.yaml"
