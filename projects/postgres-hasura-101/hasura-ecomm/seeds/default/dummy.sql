@@ -43,7 +43,7 @@ SELECT setval('movements_id_seq', COALESCE((
 ), 1), false);
 
 REFRESH MATERIALIZED VIEW "products_availability_cached";
-REFRESH MATERIALIZED VIEW "products_public_cached";
+REFRESH MATERIALIZED VIEW "public_products_cached";
 
 -- 2022-06-03 08:10:30.802684+00
 

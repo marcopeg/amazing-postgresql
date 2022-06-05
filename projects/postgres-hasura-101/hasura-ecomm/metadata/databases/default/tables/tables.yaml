@@ -3,5 +3,7 @@
 - "!include public_products_availability_cached.yaml"
 - "!include public_products_availability_live.yaml"
 - "!include public_products_display.yaml"
-- "!include public_products_public_cached.yaml"
+- "!include public_public_product_type.yaml"
+- "!include public_public_product_view.yaml"
+- "!include public_public_products_cached.yaml"
 - "!include public_tenants.yaml"

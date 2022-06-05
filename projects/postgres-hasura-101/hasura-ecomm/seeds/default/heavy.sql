@@ -95,6 +95,6 @@ COMMIT;
 ---
 
 REFRESH MATERIALIZED VIEW "products_availability_cached";
-REFRESH MATERIALIZED VIEW "products_public_cached";
+REFRESH MATERIALIZED VIEW "public_products_cached";
 
 COMMIT;

@@ -1,1 +1,18 @@
-[]
+- definition:
+    query:
+      collection_name: allowed-queries
+      query_name: Public list of products
+  url: public/products
+  methods:
+    - GET
+  name: Public list of products
+  comment: null
+- definition:
+    query:
+      collection_name: allowed-queries
+      query_name: Public list of products (with offset)
+  url: public/products/offset/:offset
+  methods:
+    - GET
+  name: Public list of products (with offset)
+  comment: null

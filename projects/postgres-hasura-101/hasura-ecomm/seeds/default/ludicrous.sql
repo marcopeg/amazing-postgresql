@@ -11,7 +11,7 @@ SELECT
   CONCAT('Tenant', "t") AS "name"
 
 -- Set the size of the dataset:
-FROM generate_series(1, 10) AS "t"
+FROM generate_series(1, 10000) AS "t"
 
 -- Manage conflicts with existing values:
 ON CONFLICT ON CONSTRAINT "tenants_pkey"
@@ -41,7 +41,7 @@ SELECT
   floor(random() * (10 - 1 + 1) + 1) * 10 AS "price"
 
 -- Set the size of the dataset:
-FROM generate_series(1, 100) AS "p"
+FROM generate_series(1, 5000000) AS "p"
 
 -- Manage conflicts with existing values:
 ON CONFLICT ON CONSTRAINT "products_pkey"
@@ -84,9 +84,10 @@ SELECT
 
   -- just a dummy note because we set a non null constraint
   '-'
-FROM generate_series(1, 1000) AS "m";
+FROM generate_series(1, 25000000) AS "m";
 
 COMMIT;
+
 
 
 ---

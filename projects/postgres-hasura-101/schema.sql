@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
   "tenant_id" TEXT NOT NULL,
   "is_visible" BOOLEAN DEFAULT TRUE NOT NULL,
   "name" TEXT NOT NULL,
-  "description" TEXT NOT NULL,
+  "description" TEXT DEFAULT '',
   "price" INTEGER NOT NULL,
   "created_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   "updated_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -131,6 +131,6 @@ WHERE "p"."is_visible" IS TRUE
 --- Performance Optimization
 ---
 
-DROP INDEX "movements_product_id_idx";
+DROP INDEX IF EXISTS "movements_product_id_idx";
 CREATE INDEX "movements_product_id_idx"
 ON "movements" ("product_id" ASC);

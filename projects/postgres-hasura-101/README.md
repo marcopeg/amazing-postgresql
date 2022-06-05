@@ -64,6 +64,10 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [Import Hasura Metadata](#import-hasura-metadata)
   - [Create a Seed File](#create-a-seed-file)
   - [Seed Data](#seed-data)
+- [Customers & Orders](#customers--orders)
+  - [The Availability Issue](#the-availability-issue)
+  - [Multi Tenant Order](#multi-tenant-order)
+  - [Backend-less Approach](#backend-less-approach)
 - [Public Products View](#public-products-view)
   - [Recursive Materialized Views](#recursive-materialized-views)
   - [Refresh Materialized View Concurrently](#refresh-materialized-view-concurrently)
@@ -230,7 +234,7 @@ In this table we want to list the products that are sold by each tenant:
 | tenant_id   | text      | -       |
 | is_visible  | boolean   | true    |
 | name        | text      | -       |
-| description | text      | -       |
+| description | text      | ""      |
 | price       | integer   | -       |
 | created_at  | timestamp |  now()  |
 | updated_at  | timestamp |  now()  |
@@ -243,7 +247,7 @@ CREATE TABLE "public"."products" (
   "tenant_id" TEXT NOT NULL,
   "is_visible" BOOLEAN DEFAULT TRUE NOT NULL,
   "name" TEXT NOT NULL,
-  "description" TEXT NOT NULL,
+  "description" TEXT DEFAULT '',
   "price" INTEGER NOT NULL,
   "created_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   "updated_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -1710,6 +1714,16 @@ Of course, we want to show whether a product is available or not. But the system
 
 Although it is technically doable to create a view that puts together products, tenants, and availability, that solution won't scale when it comes to a shop the size of Amazon.
 
+> We've actually created such view... but try to heavily seed the project and then run:
+>
+> ```sql
+> SELECT * FROM "public"."products_availability_live";
+> ```
+>
+> It takes up to 10s with just 100K products and a few million inventory movements!
+>
+> This doesn't seem a viable solution to me.
+
 🚧 We need some form of cache 🚧
 
 But when a Customer want to place an item into the shopping cart, it would be nice to actually provide an updated information and communicate as early as possibile if there is any issue with the cached availability.
@@ -1752,7 +1766,7 @@ Luckily, we have already created a _materialized view_ that stores a cached vers
 We can _JOIN_ this cached table and generate a dataset that is suitable for general public consumption:
 
 ```sql
-CREATE MATERIALIZED VIEW "products_public_cached" AS
+CREATE MATERIALIZED VIEW "public_products_cached" AS
 SELECT
   "t"."id" AS "tenant_id",
   "t"."name" AS "tenant_name",
@@ -1781,7 +1795,7 @@ To get a full refresh of this view you will need to:
 
 ```sql
 REFRESH MATERIALIZED VIEW "products_availability_cached";
-REFRESH MATERIALIZED VIEW "products_public_cached";
+REFRESH MATERIALIZED VIEW "public_products_cached";
 ```
 
 ### Refresh Materialized View Concurrently
@@ -1794,11 +1808,11 @@ There is a simple trick that can take you a long way into big data.
 
 We can refresh `products_availability_cached` once every couple of hours with a _CRON JOB_ and we don't care much that this is a heavy and blocking operation because nobody directly consumes this view.
 
-Then we can add a _UNIQUE INDEX_ to `products_public_cached`:
+Then we can add a _UNIQUE INDEX_ to `public_products_cached`:
 
 ```sql
-CREATE UNIQUE INDEX "products_public_cached_pk"
-ON "products_public_cached" ("product_id", "tenant_id");
+CREATE UNIQUE INDEX "public_products_cached_pk"
+ON "public_products_cached" ("id", "tenant_id");
 ```
 
 And with this index in place, we can now refresh this view with the _CONCURRENTLY_ flag:
@@ -1835,7 +1849,7 @@ First, we need to tune a GraphQL query that returns the data we want to expose:
 
 ```gql
 query publicProducts {
-  products: products_public_cached(order_by: { id: asc }) {
+  products: public_products_cached(order_by: { id: asc }) {
     id
     name
     description
@@ -1867,7 +1881,7 @@ So we need to refine this query, as to allow a simple **offset pagination**:
 
 ```gql
 query publicProducts($offset: Int!) {
-  products: products_public_cached(order_by: { id: asc }, offset: $offset) {
+  products: public_products_cached(order_by: { id: asc }, offset: $offset) {
     id
     name
     description
@@ -1885,6 +1899,8 @@ query publicProducts($offset: Int!) {
 
 Then, moving into the REST configuration again, we can setup a parametrized endpoint that supports pagination:
 
+> NOTE: Set the `Location` to `public/products/offset/:offset`, as so to make it more RESTful than it shows in the screenshot!
+
 ![rest-public-products-offset](./images/rest-public-products-offset-param.jpg)
 
 Now I can run the following public requests:
@@ -1895,6 +1911,252 @@ http://localhost:8080/api/rest/public/products/25
 ```
 
 > 👉 It is important to note that the client App must be aware that the pagination is set to 25 items in order to compute the correct offset parameter. Of course, we can provide an endpoint in which both _limit_ and _offset_ are available, as well as an endpoint in which the _lastId_ is provided for implementing a cursor-based pagination.
+
+---
+
+## Single Product View
+
+The public list of products is now highly performing but it shows somewhat old informations.
+
+When the user lands on a specific product's page, **it would be nice to show updated information**.
+
+### Performance Issues With Live Data
+
+We have already prepared a view that calculates updated availability informations for all the products: `products_availability_live`:
+
+```sql
+SELECT * FROM "public"."products_availability_live";
+```
+
+But this query takes up to 10s to execute with just a few million inventory movement records, over just 100K products. Hardly Amazon's scenario.
+
+But this query works on the `movements` table, and we have set up an index on the `product_id` field: `movements_product_id_idx`... so...
+
+```sql
+SELECT * FROM "public"."products_availability_live"
+WHERE "product_id" = 'p22';
+```
+
+Suddenly this query becomes fast again.
+
+> Of course, if we keep adding movements even this query will eventually degrade in performances.
+>
+> Even in the real-life Accounting scenario where data is actually kept this way as a legal requirement it won't work. And before computers, it was done manually with pen and paper!
+>
+> There would be the need to divide the problem into chunks, and Time is a good parameter. In Accounting we divide data into "accounting years" and at the beginning of every year we create an entry with the totals from the year before.
+>
+> Just this trick will allow us to reshape our query into:
+>
+> ```sql
+> ...
+> AND "created_at" > date_trunc('year', now())
+> ```
+>
+> Furtherly limiting the scope of our calculations. Of course, there would be the need to introduce yet another index on the `created_at` field. Not to mention _a new partial index_ for each year as planned maintenance, dropping the old ones.
+>
+> But this subject alone is worth another in-dept tutorial!
+
+### The Product Public View
+
+With all these considerations in place, we could try to work out a query that is similar to the _Public Products List_, but provides only updated information:
+
+```sql
+CREATE VIEW "public_product_view" AS
+SELECT
+  "t"."id" AS "tenant_id",
+  "t"."name" AS "tenant_name",
+  "p"."id" AS "id",
+  "p"."name" AS "name",
+  "p"."description" AS "description",
+  "p"."is_visible" AS "is_visible",
+  "p"."price" AS "price",
+  COALESCE("a"."amount", 0) AS "availability_amount",
+  "p"."updated_at" AS "updated_at"
+FROM "public"."products" AS "p"
+LEFT JOIN "public"."tenants" AS "t" ON "p"."tenant_id" = "t"."id"
+LEFT JOIN "public"."products_availability_live" AS "a" ON "a"."product_id" = "p"."id";
+```
+
+This view is quite dangerous because it merges live data from our source-of-truth tables.
+
+It should be used only with a `WHERE "id" = 'xx'` clause:
+
+```sql
+SELECT * FROM "public_product_view"
+WHERE "id" = 'p22';
+```
+
+### Fix Performances With Hasura Rules
+
+One option to fix this issue would be to track our view and set a `row_limit=1` for the `anonymous` role:
+
+![product public view limit](./images/product_public_view_limit.jpg)
+
+The query that we need to fetch a specific product would be:
+
+```graphql
+query publicProduct($productId: String!) {
+  public_product(where: { id: { _eq: $productId } }) {
+    id
+    name
+    description
+    price
+    is_visible
+    updated_at
+    availability_amount
+    tenant_id
+    tenant_name
+  }
+}
+```
+
+And even if we attempt to call it without any condition, it would still return one single row.
+
+From here on, we know already how to map it to a REST endpoint to even enforce the consumption through a URL parameter.
+
+But is there a better way?
+
+### Fix Performances With PostgreSQL Functions
+
+We can go a long way into enforcing fairly complex business rules with a combination of:
+
+- custom types (tables or views)
+- server side functions
+
+First, we can create a data-type:
+
+```sql
+CREATE TABLE "public"."public_product_type" (
+  "tenant_id" TEXT NOT NULL,
+  "tenant_name" TEXT NOT NULL,
+  "id" TEXT PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "description" TEXT,
+  "is_visible" BOOLEAN NOT NULL,
+  "price" INTEGER NOT NULL,
+  "availability" BIGINT NOT NULL,
+  "updated_at" TIMESTAMPTZ
+);
+```
+
+This table will always be empty, we only use it for 2 reasons:
+
+1. Hasura will track it, and define Permissions on it
+2. We can create a function that returns the data type
+
+```sql
+CREATE OR REPLACE FUNCTION public_product_fn (
+  productId TEXT
+)
+RETURNS SETOF "public"."public_product_view" AS $$
+BEGIN
+  RETURN QUERY
+    -- create a dataset compatible with
+    -- "public_product_view"
+    SELECT
+      "t"."id" AS "tenant_id",
+      "t"."name" AS "tenant_name",
+      "p"."id" AS "id",
+      "p"."name" AS "name",
+      "p"."description" AS "description",
+      "p"."is_visible" AS "is_visible",
+      "p"."price" AS "price",
+      COALESCE("a"."amount", 0)::BIGINT AS "availability",
+      "p"."updated_at" AS "updated_at"
+
+    -- collect data from live data-sources
+    FROM "public"."products" AS "p"
+    LEFT JOIN "public"."tenants" AS "t" ON "p"."tenant_id" = "t"."id"
+    LEFT JOIN "public"."products_availability_live" AS "a" ON "a"."product_id" = "p"."id"
+
+    -- enforce condition
+    WHERE "p"."id" = productId
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql STABLE;
+```
+
+The key point to focus here are:
+
+- `RETURNS SETOF`: A function must return a data-type that is known and traked by Hasura. It can be an empty table (tables are data-types in Postgres) or a _View_ that is tracked but not exposed to a particular role
+- `STABLE`: Functions marked this way can be added to the root query, else they will be tracked as mutations
+
+**But the truly important part is that in a function we can perform arbitrary logic.**
+
+Later on in the tutorial we will introduce the concept of a "shopping cart", where some products will be marked as sold for a specific amount of time, until either the shopping cart is transformed into an order, or goes in timeout.
+
+In such situation, we will be able to perform some SQL black-belt magic and calculate the virtual availability of a specific product, effectively avoiding racing conditions between customers.
+
+Yes, for the last 20 years we used to do this kind of logic in the Application Layer, writing Java, PHP or NodeJS apps. Good for you.
+
+The truth is that SQL is extremely performant and much easier to test than any other language. The deployment of functions is light and does not produce downtime. The deployment can be fully automated thanks to CI/CD and migrations tools like the one we are using here.
+
+We can even think to perform blue/green deployment by inverting replica-sets master/slave instances!
+
+---
+
+## The Order System
+
+What is an e-commerce without an order system?
+
+The next part of our adventure involves building a cart system where our users can store a list of items that they wish to purchase.
+
+### Migrate Up & Down
+
+Most often than not, evolving your Hasura project will require an evolution of your PostgreSQL schema.
+
+- new tables
+- new views
+- new functions
+
+The most convenient way to operate this is by writing manual migrations.
+
+First, scaffold a new migration folder:
+
+```bash
+hasura migrate create \
+  "orders-management" \
+  --up-sql "SELECT NOW();" \
+  --down-sql "SELECT NOW();" \
+  --database-name default \
+  --project hasura-ecomm
+```
+
+Then apply the migration:
+
+```bash
+hasura migrate apply \
+  --database-name default \
+  --project hasura-ecomm
+```
+
+And verify your migrations status:
+
+```bash
+hasura migrate status \
+  --database-name default \
+  --project hasura-ecomm
+```
+
+The migration that we scaffolded does absolutely nothing to the db schema. It's just the preparation for ne next command, a super simple trick that you can repeat over and over to re-do the last migration:
+
+```bash
+hasura migrate apply \
+ --database-name default \
+ --project hasura-ecomm \
+ --down 1 &&
+
+hasura migrate apply \
+ --database-name default \
+ --project hasura-ecomm \
+ --up 1
+```
+
+I suggest you run this as a single line command, as so to make it easier to repeat:
+
+```bash
+hasura migrate apply --database-name default --project hasura-ecomm --down 1 && hasura migrate apply --database-name default --project hasura-ecomm --up 1
+```
 
 ---
 

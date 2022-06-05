@@ -1,1 +1,33 @@
-[]
+- name: allowed-queries
+  definition:
+    queries:
+      - name: Public list of products
+        query: |
+          query publicProducts {
+          	products: public_products_cached(order_by: {id:asc}) {
+          		id
+          		name
+          		description
+          		price
+          		updated_at
+          		availability_amount
+          		availability_updated_at
+          		tenant_id
+          		tenant_name
+          	}
+          }
+      - name: Public list of products (with offset)
+        query: |
+          query publicProducts ($offset: Int!) {
+          	products: public_products_cached(order_by: {id:asc}, offset: $offset) {
+          		id
+          		name
+          		description
+          		price
+          		updated_at
+          		availability_amount
+          		availability_updated_at
+          		tenant_id
+          		tenant_name
+          	}
+          }
