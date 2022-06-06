@@ -10,6 +10,15 @@
 - definition:
     query:
       collection_name: allowed-queries
+      query_name: Product Details
+  url: public/products/:productId
+  methods:
+    - GET
+  name: Product Details
+  comment: null
+- definition:
+    query:
+      collection_name: allowed-queries
       query_name: Public list of products (with offset)
   url: public/products/offset/:offset
   methods:

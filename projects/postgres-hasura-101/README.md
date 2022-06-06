@@ -2,6 +2,13 @@
 
 The goal of this project is to create the GraphQL APIs for a simple e-commerce solution using PostgreSQL and Hasura.io.
 
+Our target size is nothing short than [Amazon.com](https://landingcube.com/amazon-statistics/)
+
+- ~2.3 million sellers
+- ~12 million products in the catalog
+- ~584 million orders a year -> ~18 orders per second
+- ~112 million customers in US
+
 ---
 
 ## Table of Contents
@@ -74,6 +81,18 @@ The goal of this project is to create the GraphQL APIs for a simple e-commerce s
   - [Expose The Public Products View](#expose-the-public-products-view)
   - [Derive a REST Endpoint From a GraphQL Query](#derive-a-rest-endpoint-from-a-graphql-query)
   - [Parametrized REST Endpoint](#parametrized-rest-endpoint)
+- [The Issue With Offset Pagination](#the-issue-with-offset-pagination)
+  - [Cursor Based Pagination](#cursor-based-pagination)
+  - [Improving Performances](#improving-performances)
+- [Single Product View](#single-product-view)
+  - [Performance Issues With Live Data](#performance-issues-with-live-data)
+  - [The Product Public View](#the-product-public-view)
+  - [Fix Performances With Hasura Rules](#fix-performances-with-hasura-rules)
+  - [Fix Performances With PostgreSQL Functions](#fix-performances-with-postgresql-functions)
+  - [Track The PostgreSQL Function With Hasura](#track-the-postgresql-function-with-hasura)
+  - [The Singe Product REST Endpoint](#the-singe-product-rest-endpoint)
+- [The Orders Management System](#the-orders-management-system)
+  - [Migrate Up & Down](#migrate-up--down)
 
 ---
 
@@ -1914,6 +1933,63 @@ http://localhost:8080/api/rest/public/products/25
 
 ---
 
+## The Issue With Offset Pagination
+
+🚧 In order to test this paragraph you need to seed a few millions products, then refresh the materialized views that we've prepared. 🚧
+
+The offset pagination is farily simple to implement but has a huge performance bottleneck:
+
+🧨 **THE GREATER THE OFFSET, THE SLOWEST THE QUERY** 🧨
+
+That happens because PostgreSQL must go through all the records that you ask, and then ignore X amount of them.
+
+### Cursor Based Pagination
+
+One possible way out is to use a **Cursor Based Pagination** which works like that:
+
+1. You sort your dataset by a unique key
+2. You ask: _give me items AFTER the last key that you gave me_
+
+```sql
+SELECT * FROM "public_products_cached"
+WHERE "id" > 'p1000087'
+ORDER BY "id" ASC
+LIMIT 25;
+```
+
+👉 To get the first page you can omit the `WHERE` clause alltogether.
+
+At one point, you will reach the **end of the cursor** and get an empty page back. That is the end of the pagination.
+
+### Improving Performances
+
+Usually, this kind of pagination is performed on a static field such as:
+
+- a numeric progressive id
+- a timestamp
+
+The following query yields the first page worth of products with last updated products on top:
+
+```sql
+SELECT * FROM "public_products_cached"
+WHERE "updated_at" < now()
+ORDER BY "updated_at" DESC
+LIMIT 25;
+```
+
+You can notice that it is quite a slow query: ~200-300ms
+
+By adding an index we can easily fix this:
+
+```sql
+CREATE INDEX "public_products_cached_updated_at_idx"
+ON "public_products_cached" ("updated_at" DESC);
+```
+
+👉 Remember that indexes can improve reading performances dramatically, but consume space and have side effects on writing performances. Life is a tradeoff!
+
+---
+
 ## Single Product View
 
 The public list of products is now highly performing but it shows somewhat old informations.
@@ -2045,10 +2121,10 @@ This table will always be empty, we only use it for 2 reasons:
 2. We can create a function that returns the data type
 
 ```sql
-CREATE OR REPLACE FUNCTION public_product_fn (
-  productId TEXT
+CREATE OR REPLACE FUNCTION "public"."public_product_fn" (
+  product_id TEXT
 )
-RETURNS SETOF "public"."public_product_view" AS $$
+RETURNS SETOF "public"."public_product_type" AS $$
 BEGIN
   RETURN QUERY
     -- create a dataset compatible with
@@ -2070,7 +2146,7 @@ BEGIN
     LEFT JOIN "public"."products_availability_live" AS "a" ON "a"."product_id" = "p"."id"
 
     -- enforce condition
-    WHERE "p"."id" = productId
+    WHERE "p"."id" = "public_product_fn"."product_id"
     LIMIT 1;
 END;
 $$ LANGUAGE plpgsql STABLE;
@@ -2093,9 +2169,58 @@ The truth is that SQL is extremely performant and much easier to test than any o
 
 We can even think to perform blue/green deployment by inverting replica-sets master/slave instances!
 
+### Track The PostgreSQL Function With Hasura
+
+Now that we have a [data-type and a function](./hasura-ecomm/migrations/default/1654239574795_products_public_view/up.sql) that perform the read logic for us, we can expose a single product data with Hasura.
+
+Hasura uses the _data-type_ table to control access to the data, so the first step is to:
+
+1. track the `public_product_type` table
+2. give unconditioned read permissions to the `anonymous` role
+
+🧐 What about limiting the rows number to 1? 🧐
+
+You could do it, no problem, but the PostgreSQL function does that for you. We moved this responsibility into the SQL project.
+
+Next, you can track the `public_product_fn` that you can find under the `Untracked custom functions` accordion in "Data -> default -> public".
+
+![Track function](./images/track-function.jpg)
+
+1. click on "Add As Root Field"
+2. go to "Permissions"
+3. allow the Anonymous role
+
+When everything is in place, you should be able to run the query:
+
+```sql
+query getProduct ($productId:String!) {
+  public_product_fn(args: {product_id: $productId}) {
+    id
+    name
+    description
+    is_visible
+    price
+    availability
+    updated_at
+    tenant_id
+    tenant_name
+  }
+}
+```
+
+Now this query still performs within a few milliseconds even loading the db with millions of movements. And it returns live data.
+
+### The Singe Product REST Endpoint
+
+As we did for the list of products, we can just click on "REST" from the GraphiQL interface, and set up a new public REST enpoint to get a product's data.
+
+```
+http://localhost:8080/api/rest/public/products/p1000023
+```
+
 ---
 
-## The Order System
+## The Orders Management System
 
 What is an e-commerce without an order system?
 

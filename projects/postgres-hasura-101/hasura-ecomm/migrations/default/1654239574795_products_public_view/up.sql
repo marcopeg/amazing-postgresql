@@ -21,9 +21,13 @@ LEFT JOIN "public"."products_availability_cached" AS "a" ON "a"."product_id" = "
 
 WHERE "p"."is_visible" IS TRUE;
 
--- This index allow to refresh this view concurrently
+-- This index allows to refresh this view concurrently
 CREATE UNIQUE INDEX "public_products_cached_pk"
 ON "public_products_cached" ("id", "tenant_id");
+
+-- This index allows for faster cursor based pagination
+CREATE INDEX "public_products_cached_updated_at_idx"
+ON "public_products_cached" ("updated_at" DESC);
 
 
 
@@ -69,8 +73,8 @@ CREATE TABLE "public"."public_product_type" (
 );
 
 
-CREATE OR REPLACE FUNCTION public_product_fn (
-  productId TEXT
+CREATE OR REPLACE FUNCTION "public"."public_product_fn" (
+  product_id TEXT
 )
 RETURNS SETOF "public"."public_product_type" AS $$
 BEGIN
@@ -94,7 +98,7 @@ BEGIN
     LEFT JOIN "public"."products_availability_live" AS "a" ON "a"."product_id" = "p"."id"
 
     -- enforce condition
-    WHERE "p"."id" = productId
+    WHERE "p"."id" = "public_product_fn"."product_id"
     LIMIT 1;
 END;
 $$ LANGUAGE plpgsql STABLE;

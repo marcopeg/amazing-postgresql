@@ -31,3 +31,18 @@
           		tenant_name
           	}
           }
+      - name: Product Details
+        query: |
+          query getProduct ($productId: String!) {
+          	public_product_fn(args: {product_id:$productId}) {
+          		id
+          		name
+          		description
+          		is_visible
+          		price
+          		availability
+          		updated_at
+          		tenant_id
+          		tenant_name
+          	}
+          }

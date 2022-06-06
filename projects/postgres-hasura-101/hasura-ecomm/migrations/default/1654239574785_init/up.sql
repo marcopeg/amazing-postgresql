@@ -6,7 +6,8 @@ CREATE FUNCTION public.set_current_timestamp_updated_at() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  NEW."updated_at" = NOW();
+  -- https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT
+  NEW."updated_at" = clock_timestamp();
   RETURN NEW;
 END;
 $$;
