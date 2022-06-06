@@ -22,6 +22,10 @@ Our target size is nothing short than [Amazon.com](https://landingcube.com/amazo
 - [Basic Schema](#basic-schema)
   - [tenants](#tenants)
   - [products](#products)
+    - [Data Validation](#data-validation)
+    - [Relational Data Integrity](#relational-data-integrity)
+    - [Data Automation](#data-automation)
+    - [Advanced Data Validation](#advanced-data-validation)
   - [movements](#movements)
 - [Data Seeding](#data-seeding)
   - [Insert a Single Value](#insert-a-single-value)
@@ -336,6 +340,34 @@ FOR EACH ROW EXECUTE FUNCTION "public"."set_current_timestamp_updated_at"();
 ```
 
 > 🚧 Can you modify this function as so to update `updated_at` only when the `price` changes?
+
+#### Advanced Data Validation
+
+We can use functions and triggers to create advanced validation business logic.
+
+Let's say that for some weird reason we don't want to accept products with a price of 9 bucks:
+
+```sql
+CREATE OR REPLACE FUNCTION "public"."check_weird_price_requirement"()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Apply the weird logic
+  IF NEW.price = 9 THEN
+    RAISE EXCEPTION 'Price 9 is not allowed';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER "check_weird_price_requirement_trigger"
+BEFORE INSERT OR UPDATE ON "public"."products"
+FOR EACH ROW EXECUTE FUNCTION "public"."check_weird_price_requirement"();
+```
+
+Note the `BEFORE INSERT OR UPDATE` as so to associate the the function to multiple data events.
 
 ### movements
 
