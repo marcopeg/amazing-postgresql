@@ -110,9 +110,9 @@ The following notes are written using MacOS as running environment and assume yo
 
 👉 [Read about the general prerequisites here. 🔗](../../README.md#prerequisites-for-running-the-examples)
 
-👉 [You can also do it on a GitPod.io Workspace! 🔗](https://gitpod.io#https://github.com/marcopeg/gitpod-workspace)
+👉 [You can also do it on a GitPod.io Workspace! 🔗](https://gitpod.io#https://github.com/marcopeg/amazing-postgresql)
 
-[![Open in GitPod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io#https://github.com/marcopeg/gitpod-workspace)
+[![Open in GitPod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io#https://github.com/marcopeg/amazing-postgresql)
 
 ---
 
