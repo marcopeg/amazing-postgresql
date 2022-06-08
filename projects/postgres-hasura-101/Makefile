@@ -72,3 +72,11 @@ migrate-redo:
 	@hasura migrate apply --project hasura-ecomm --database-name default --down $(steps)
 	@hasura migrate apply --project hasura-ecomm --database-name default --up $(steps)
 
+migrate-create:
+	@hasura migrate create \
+		"$(name)" \
+		--up-sql "SELECT NOW();" \
+		--down-sql "SELECT NOW();" \
+		--database-name default \
+		--project hasura-ecomm
+	@hasura migrate apply --project hasura-ecomm --database-name default
