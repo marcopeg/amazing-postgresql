@@ -2427,6 +2427,43 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
 
 ### The Shopping Cart
 
+The shopping cart is somewhat a more difficult data structure. It tracks `orders` and an order refers to a `user`. But it should also refer to `many products`. So we need a two table system:
+
+- orders
+- orders_lines
+
+👉 [Checkout the migration source code](./hasura-ecomm/migrations/default/1654414281281_orders-management/up.sql) 👈
+
+Moreover, a `product_line` should reference a lot of stuff:
+
+- `user_id`: to control vertical access for `users`
+- `tenant_id`: to control vertical access for `tenants`
+- `product_id`: to refer to the product we are buying
+- `order_id`: so that from the order we can refer to the lines and sum it up
+
+Then there is the `amount` information that simply refers to how many items of such product the user is buying.
+
+🔥 **But then there is more** 🔥
+
+Products can be modified in time by their tenants. Price, title, description... all these informations can change.
+
+But that SHOULD NOT AFFECT an order that has been completed.
+
+Because of this legal (and common sense) requirement, we need TO COPY some information from the product into the shopping cart line:
+
+- `price`
+- `product name`
+
+It's a lot of data to remember, and it's a lot of data that can easily be inferred.
+
+Once I want to add a product to an order, and I have my `product_id` and `order_id`, all the other informations could be inferred.
+
+Let's work out some data automation using triggers!
+
+### Order Data Automation
+
+👉 [Checkout the migration source code](./hasura-ecomm/migrations/default/1654414281281_orders-management/up.sql) 👈
+
 ### Add & Remove An Item
 
 ---

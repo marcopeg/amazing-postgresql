@@ -72,3 +72,22 @@ INSERT INTO "orders" ("id", "user_id") VALUES
 
 ON CONFLICT ON CONSTRAINT "orders_pkey"
 DO UPDATE SET "user_id" = EXCLUDED."user_id";
+
+
+
+---
+--- Shopping Cart Lines
+---
+
+INSERT INTO "orders_lines" VALUES 
+('hbo', 'lsk', 'ls001', 1, 1, 100, 'Lightsaber Lukes'),
+('hbo', 'dvd', 'dv001', 1, 1, 89, 'Lightsaber Dart Vaeders'),
+('hbo', 'iso', 'is001', 1, 1, 85000, 'Millennium Falcom')
+
+ON CONFLICT ON CONSTRAINT "orders_lines_pkey"
+DO UPDATE SET 
+  "user_id" = EXCLUDED."user_id",
+  "tenant_id" = EXCLUDED."tenant_id",
+  "units" = EXCLUDED."units",
+  "price" = EXCLUDED."price",
+  "name" = EXCLUDED."name";
