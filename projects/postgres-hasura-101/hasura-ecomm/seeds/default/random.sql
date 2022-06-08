@@ -61,30 +61,30 @@ COMMIT;
 
 INSERT INTO "public"."movements"
   ("tenant_id", "product_id", "created_at", "amount", "note")
+
 SELECT
-  -- randomic tenant_id in range:
-  CONCAT('t', floor(random() * ((
-    SELECT MAX(NULLIF(regexp_replace("id", '\D','','g'), '')::INT)
-    FROM "public"."tenants"
-  )- 1 + 1) + 1)) AS "tenant_id",
-
-  -- randomic product_id in range:
-  CONCAT('p', floor(random() * ((
-    SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
-    FROM "public"."products"
-    ORDER BY "id" DESC
-    LIMIT 1
-  ) - 1 + 1) + 1)) AS "product_id",
-
+  "p"."tenant_id",
+  "p"."id" AS "product_id",
   -- randomic created_at within the last 30 days
   now() - '30d'::INTERVAL * random() AS "created_at",
-
+  
   -- randomic amount between -50 and 100 units
   floor(random() * (100 + 50 + 1) - 50)::int AS "amount",
+  
+  '-' AS "description"
 
-  -- just a dummy note because we set a non null constraint
-  '-'
-FROM generate_series(1, 1000) AS "m";
+FROM (
+  SELECT
+    -- randomic product_id in range:
+    CONCAT('p', floor(random() * ((
+      SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
+      FROM "public"."products"
+      ORDER BY "id" DESC
+      LIMIT 1
+    ) - 1 + 1) + 1)) AS "product_id"
+  FROM generate_series(1, 100) AS "m"
+) AS "s"
+LEFT JOIN "products" AS "p" ON "p"."id" = "s"."product_id";
 
 COMMIT;
 

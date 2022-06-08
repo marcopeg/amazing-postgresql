@@ -1,8 +1,12 @@
+BEGIN;
+
 ---
 --- Truncate Tables
 ---
 
 TRUNCATE public.tenants RESTART IDENTITY CASCADE;
+TRUNCATE public.users RESTART IDENTITY CASCADE;
+TRUNCATE public.orders RESTART IDENTITY CASCADE;
 
 
 
@@ -41,6 +45,9 @@ SELECT
 -- Set the size of the dataset:
 FROM generate_series(1, 2500) AS "t";
 
+-- Enable Constraints & Indexes
+ALTER TABLE ONLY public.tenants ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
+
 COMMIT;
 
 
@@ -72,6 +79,12 @@ SELECT
 -- Set the size of the dataset:
 FROM generate_series(1, 250000) AS "p";
 
+-- Enable Constraints & Indexes
+ALTER TABLE ONLY public.products ADD CONSTRAINT products_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.products ADD CONSTRAINT products_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON UPDATE CASCADE ON DELETE CASCADE;
+CREATE INDEX products_is_visible ON public.products USING btree (is_visible) WHERE (is_visible = true);
+CREATE TRIGGER set_public_products_updated_at BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.set_current_timestamp_updated_at();
+
 COMMIT;
 
 
@@ -81,50 +94,40 @@ COMMIT;
 
 INSERT INTO "public"."movements"
   ("tenant_id", "product_id", "created_at", "amount", "note")
+
 SELECT
-  -- randomic tenant_id in range:
-  CONCAT('t', floor(random() * ((
-    SELECT MAX(NULLIF(regexp_replace("id", '\D','','g'), '')::INT)
-    FROM "public"."tenants"
-  )- 1 + 1) + 1)) AS "tenant_id",
-
-  -- randomic product_id in range:
-  CONCAT('p', floor(random() * ((
-    SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
-    FROM "public"."products"
-    ORDER BY "id" DESC
-    LIMIT 1
-  ) - 1 + 1) + 1)) AS "product_id",
-
+  "p"."tenant_id",
+  "p"."id" AS "product_id",
   -- randomic created_at within the last 30 days
   now() - '30d'::INTERVAL * random() AS "created_at",
-
+  
   -- randomic amount between -50 and 100 units
   floor(random() * (100 + 50 + 1) - 50)::int AS "amount",
+  
+  '-' AS "description"
 
-  -- just a dummy note because we set a non null constraint
-  '-'
-FROM generate_series(1, 2500000) AS "m";
+FROM (
+  SELECT
+    -- randomic product_id in range:
+    CONCAT('p', floor(random() * ((
+      SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
+      FROM "public"."products"
+      ORDER BY "id" DESC
+      LIMIT 1
+    ) - 1 + 1) + 1)) AS "product_id"
+  FROM generate_series(1, 2500000) AS "m"
+) AS "s"
+LEFT JOIN "products" AS "p" ON "p"."id" = "s"."product_id";
 
-COMMIT;
-
-
-
----
 --- Enable Constraints & Indexes
----
-
-ALTER TABLE ONLY public.tenants ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.products ADD CONSTRAINT products_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY public.products ADD CONSTRAINT products_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON UPDATE CASCADE ON DELETE CASCADE;
-CREATE INDEX products_is_visible ON public.products USING btree (is_visible) WHERE (is_visible = true);
-CREATE TRIGGER set_public_products_updated_at BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.set_current_timestamp_updated_at();
-
 ALTER TABLE ONLY public.movements ADD CONSTRAINT movements_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.movements ADD CONSTRAINT movements_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE ONLY public.movements ADD CONSTRAINT movements_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON UPDATE CASCADE ON DELETE CASCADE;
 CREATE INDEX movements_product_id_idx ON public.movements USING btree (product_id);
+
+COMMIT;
+
+
 
 
 
@@ -135,4 +138,4 @@ CREATE INDEX movements_product_id_idx ON public.movements USING btree (product_i
 REFRESH MATERIALIZED VIEW "products_availability_cached";
 REFRESH MATERIALIZED VIEW "public_products_cached";
 
-COMMIT;
+END;

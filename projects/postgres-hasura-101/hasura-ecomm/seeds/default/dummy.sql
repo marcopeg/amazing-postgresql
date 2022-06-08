@@ -45,5 +45,30 @@ SELECT setval('movements_id_seq', COALESCE((
 REFRESH MATERIALIZED VIEW "products_availability_cached";
 REFRESH MATERIALIZED VIEW "public_products_cached";
 
--- 2022-06-03 08:10:30.802684+00
 
+
+
+---
+--- Users
+---
+
+INSERT INTO "users" ("id", "name") VALUES
+('hbo',	'Hobi One Kenobi'),
+('lei',	'Princess Leia')
+
+ON CONFLICT ON CONSTRAINT "users_pkey"
+DO UPDATE SET "name" = EXCLUDED."name";
+
+
+
+
+---
+--- Shopping Cart
+---
+
+INSERT INTO "orders" ("id", "user_id") VALUES
+(1,	'hbo'),
+(2,	null)
+
+ON CONFLICT ON CONSTRAINT "orders_pkey"
+DO UPDATE SET "user_id" = EXCLUDED."user_id";

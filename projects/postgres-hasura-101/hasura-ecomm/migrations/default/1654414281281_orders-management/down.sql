@@ -1,1 +1,2 @@
-SELECT NOW();
+DROP TABLE IF EXISTS "public"."orders" CASCADE;
+DROP TABLE IF EXISTS "public"."users" CASCADE;

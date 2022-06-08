@@ -36,6 +36,7 @@ Our target size is nothing short than [Amazon.com](https://landingcube.com/amazo
   - [Generate Randomic Data](#generate-randomic-data)
   - [Generate Randomic Timestamp](#generate-randomic-timestamp)
   - [Work With Regular Expressions](#work-with-regular-expressions)
+  - [Work With Sub-Queries](#work-with-sub-queries)
 - [Tracking Tables with Hasura.io](#tracking-tables-with-hasuraio)
 - [Hasura Queries](#hasura-queries)
   - [Single Table Query](#single-table-query)
@@ -651,6 +652,103 @@ SELECT
 FROM generate_series(1, 10000) AS "m"
 RETURNING *
 ```
+
+### Work With Sub-Queries
+
+The query above is good at generating a randominc `product_id` and `tenant_id` in range with the data existing in the other tables.
+
+The problem is that we have no guarantee that the `tenant_id` that we generate is actually the same that is also referenced by the `product_id`:
+
+```
+movement.tenant_id SHOULD EQUAL movement -> product.tenant_id
+```
+
+Fortunately, we can use sub-queries and joins to correlate data.
+
+The first step is to build a query that generates a randomic list of `product_id` records using the regexp that we've seen before:
+
+```sql
+SELECT
+  -- randomic product_id in range:
+  CONCAT('p', floor(random() * ((
+    SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
+    FROM "public"."products"
+    ORDER BY "id" DESC
+    LIMIT 1
+  ) - 1 + 1) + 1)) AS "product_id"
+FROM generate_series(1, 10) AS "m";
+```
+
+👉 This is a randomic generation, values could be easily duplicated.
+
+If you want unique values, you should combine a `DISTINCT` and `LIMIT` statements, overshooting the amound of data that you want the query to generate:
+
+```sql
+SELECT
+  DISTINCT(
+    CONCAT('p', floor(random() * ((
+      SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
+      FROM "public"."products"
+      ORDER BY "id" DESC
+      LIMIT 1
+    ) - 1 + 1) + 1))
+  ) AS "product_id"
+FROM generate_series(1, 1000 * 1.1) AS "m"
+LIMIT 1000;
+```
+
+Then we can wrap it in a sub-query and join this results with the `products` table. This is actually an effective way to select randomic products:
+
+```sql
+SELECT "p".* FROM (
+  SELECT
+    DISTINCT(
+      CONCAT('p', floor(random() * ((
+        SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
+        FROM "public"."products"
+        ORDER BY "id" DESC
+        LIMIT 1
+      ) - 1 + 1) + 1))
+    ) AS "product_id"
+  FROM generate_series(1, 1000 * 1.1) AS "m"
+  LIMIT 1000
+) AS "random_products"
+LEFT JOIN "products" AS "p" ON "p"."id" = "random_products"."product_id";
+```
+
+The final seeding query would become:
+
+```sql
+INSERT INTO "public"."movements"
+  ("tenant_id", "product_id", "created_at", "amount", "note")
+
+SELECT
+  "p"."tenant_id",
+  "p"."id" AS "product_id",
+  -- randomic created_at within the last 30 days
+  now() - '30d'::INTERVAL * random() AS "created_at",
+
+  -- randomic amount between -50 and 100 units
+  floor(random() * (100 + 50 + 1) - 50)::int AS "amount",
+
+  -- movement's note
+  '-' AS "description"
+
+-- generate a list of randomic products
+FROM (
+  SELECT
+    CONCAT('p', floor(random() * ((
+      SELECT NULLIF(regexp_replace("id", '\D','','g'), '')::INT
+      FROM "public"."products"
+      ORDER BY "id" DESC
+      LIMIT 1
+    ) - 1 + 1) + 1)) AS "product_id"
+  FROM generate_series(1, 100) AS "m"
+) AS "s"
+LEFT JOIN "products" AS "p" ON "p"."id" = "s"."product_id";
+```
+
+👉 For our purposes, we don't need to generate a list of randomic products as we want duplicate movements as so to test our inventory calculations.
 
 ---
 
@@ -2275,45 +2373,61 @@ hasura migrate create \
   "orders-management" \
   --up-sql "SELECT NOW();" \
   --down-sql "SELECT NOW();" \
-  --database-name default \
-  --project hasura-ecomm
+  --project hasura-ecomm \
+  --database-name default
 ```
 
 Then apply the migration:
 
 ```bash
 hasura migrate apply \
-  --database-name default \
-  --project hasura-ecomm
+  --project hasura-ecomm \
+  --database-name default
 ```
 
 And verify your migrations status:
 
 ```bash
 hasura migrate status \
-  --database-name default \
-  --project hasura-ecomm
+  --project hasura-ecomm \
+  --database-name default
 ```
 
 The migration that we scaffolded does absolutely nothing to the db schema. It's just the preparation for ne next command, a super simple trick that you can repeat over and over to re-do the last migration:
 
 ```bash
 hasura migrate apply \
- --database-name default \
  --project hasura-ecomm \
+ --database-name default \
  --down 1 &&
 
 hasura migrate apply \
- --database-name default \
  --project hasura-ecomm \
+ --database-name default \
  --up 1
 ```
 
-I suggest you run this as a single line command, as so to make it easier to repeat:
+👉 Take a look at the [Makefile](./Makefile) to learn the utility scripts that ships with this project.
 
-```bash
-hasura migrate apply --database-name default --project hasura-ecomm --down 1 && hasura migrate apply --database-name default --project hasura-ecomm --up 1
+### The Users Table
+
+We want to track orders to a specific user identity, something very similar to the tenants:
+
+| name | type |
+| ---- | ---- |
+| id   | text |
+| name | text |
+
+```sql
+CREATE TABLE IF NOT EXISTS "public"."users" (
+  "id" TEXT NOT NULL,
+  "name" TEXT NOT NULL
+);
 ```
+
+### The Shopping Cart
+
+### Add & Remove An Item
 
 ---
 
