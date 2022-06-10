@@ -88,7 +88,6 @@ FROM (
 ) AS "s"
 LEFT JOIN "products" AS "p" ON "p"."id" = "s"."product_id";
 
-COMMIT;
 
 
 
@@ -96,11 +95,8 @@ COMMIT;
 --- Truncate Tables
 ---
 
-TRUNCATE public.tenants RESTART IDENTITY CASCADE;
 TRUNCATE public.users RESTART IDENTITY CASCADE;
-TRUNCATE public.orders RESTART IDENTITY CASCADE;
-
-
+TRUNCATE public.tenants RESTART IDENTITY CASCADE;
 
 
 
@@ -108,14 +104,25 @@ TRUNCATE public.orders RESTART IDENTITY CASCADE;
 --- Disable Constraints & Indexes
 ---
 
+ALTER TABLE ONLY public.orders_lines DROP CONSTRAINT orders_lines_pkey;
+ALTER TABLE ONLY public.orders_lines DROP CONSTRAINT orders_lines_user_id_fkey;
+ALTER TABLE ONLY public.orders_lines DROP CONSTRAINT orders_lines_tenant_id_fkey;
+ALTER TABLE ONLY public.orders_lines DROP CONSTRAINT orders_lines_product_id_fkey;
+ALTER TABLE ONLY public.orders_lines DROP CONSTRAINT orders_lines_order_id_fkey;
+
+ALTER TABLE ONLY public.orders DROP CONSTRAINT orders_pkey;
+ALTER TABLE ONLY public.orders DROP CONSTRAINT orders_user_id_fkey;
+
+ALTER TABLE ONLY public.users DROP CONSTRAINT users_pkey;
+
 DROP INDEX movements_product_id_idx;
 ALTER TABLE ONLY public.movements DROP CONSTRAINT movements_product_id_fkey;
 ALTER TABLE ONLY public.movements DROP CONSTRAINT movements_tenant_id_fkey;
 ALTER TABLE ONLY public.movements DROP CONSTRAINT movements_pkey;
 
+DROP INDEX products_is_visible;
 ALTER TABLE ONLY public.products DROP CONSTRAINT products_pkey;
 ALTER TABLE ONLY public.products DROP CONSTRAINT products_tenant_id_fkey;
-DROP INDEX products_is_visible;
 DROP TRIGGER set_public_products_updated_at ON public.products;
 
 ALTER TABLE ONLY public.tenants DROP CONSTRAINT tenants_pkey;
@@ -124,60 +131,107 @@ ALTER TABLE ONLY public.tenants DROP CONSTRAINT tenants_pkey;
 
 
 
+
 ---
---- RUN STUFF
+--- tenants
 ---
 
--- 100K Tenants
-EXECUTE "seed_tenants"(1, 50000); COMMIT;
-EXECUTE "seed_tenants"(50000, 100000); COMMIT;
+-- 500K Tenants
+EXECUTE "seed_tenants"(1, 50000);
+EXECUTE "seed_tenants"(50000, 100000);
+EXECUTE "seed_tenants"(100000, 200000);
+EXECUTE "seed_tenants"(200000, 300000);
+EXECUTE "seed_tenants"(300000, 400000);
+EXECUTE "seed_tenants"(400000, 500000);
 
 -- Enable Constraints & Indexes
 ALTER TABLE ONLY public.tenants ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
-COMMIT;
+
+
+
+---
+--- products
+---
 
 -- 5M Products
-EXECUTE "seed_products"(1, 1000000); COMMIT;
-EXECUTE "seed_products"(1000000, 2000000); COMMIT;
-EXECUTE "seed_products"(2000000, 3000000); COMMIT;
-EXECUTE "seed_products"(3000000, 4000000); COMMIT;
-EXECUTE "seed_products"(4000000, 5000000); COMMIT;
+EXECUTE "seed_products"(1, 250000);
+EXECUTE "seed_products"(250000, 1000000);
+-- EXECUTE "seed_products"(1000000, 2000000);
+-- EXECUTE "seed_products"(2000000, 3000000);
+-- EXECUTE "seed_products"(3000000, 4000000);
+-- EXECUTE "seed_products"(4000000, 5000000);
 
 -- Enable Constraints & Indexes
 ALTER TABLE ONLY public.products ADD CONSTRAINT products_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.products ADD CONSTRAINT products_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON UPDATE CASCADE ON DELETE CASCADE;
 CREATE INDEX products_is_visible ON public.products USING btree (is_visible) WHERE (is_visible = true);
 CREATE TRIGGER set_public_products_updated_at BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.set_current_timestamp_updated_at();
-COMMIT;
+
+
+
+---
+--- movements
+---
 
 -- 25M Inventory Movements
-EXECUTE "seed_movements"(1, 1000000); COMMIT;
-EXECUTE "seed_movements"(1000000, 2000000); COMMIT;
-EXECUTE "seed_movements"(2000000, 3000000); COMMIT;
-EXECUTE "seed_movements"(3000000, 4000000); COMMIT;
-EXECUTE "seed_movements"(4000000, 5000000); COMMIT;
-EXECUTE "seed_movements"(5000000, 6000000); COMMIT;
-EXECUTE "seed_movements"(6000000, 7000000); COMMIT;
-EXECUTE "seed_movements"(7000000, 8000000); COMMIT;
-EXECUTE "seed_movements"(8000000, 9000000); COMMIT;
-EXECUTE "seed_movements"(9000000, 10000000); COMMIT;
-EXECUTE "seed_movements"(10000000, 11000000); COMMIT;
-EXECUTE "seed_movements"(11000000, 12000000); COMMIT;
-EXECUTE "seed_movements"(12000000, 13000000); COMMIT;
-EXECUTE "seed_movements"(13000000, 14000000); COMMIT;
-EXECUTE "seed_movements"(14000000, 15000000); COMMIT;
-EXECUTE "seed_movements"(15000000, 16000000); COMMIT;
-EXECUTE "seed_movements"(16000000, 17000000); COMMIT;
-EXECUTE "seed_movements"(17000000, 18000000); COMMIT;
-EXECUTE "seed_movements"(18000000, 19000000); COMMIT;
-EXECUTE "seed_movements"(19000000, 20000000); COMMIT;
+EXECUTE "seed_movements"(1, 250000);
+EXECUTE "seed_movements"(250000, 1000000);
+EXECUTE "seed_movements"(1000000, 2000000);
+EXECUTE "seed_movements"(2000000, 3000000);
+EXECUTE "seed_movements"(3000000, 4000000);
+EXECUTE "seed_movements"(4000000, 5000000);
+-- EXECUTE "seed_movements"(5000000, 6000000);
+-- EXECUTE "seed_movements"(6000000, 7000000);
+-- EXECUTE "seed_movements"(7000000, 8000000);
+-- EXECUTE "seed_movements"(8000000, 9000000);
+-- EXECUTE "seed_movements"(9000000, 10000000);
+-- EXECUTE "seed_movements"(10000000, 11000000);
+-- EXECUTE "seed_movements"(11000000, 12000000);
+-- EXECUTE "seed_movements"(12000000, 13000000);
+-- EXECUTE "seed_movements"(13000000, 14000000);
+-- EXECUTE "seed_movements"(14000000, 15000000);
+-- EXECUTE "seed_movements"(15000000, 16000000);
+-- EXECUTE "seed_movements"(16000000, 17000000);
+-- EXECUTE "seed_movements"(17000000, 18000000);
+-- EXECUTE "seed_movements"(18000000, 19000000);
+-- EXECUTE "seed_movements"(19000000, 20000000);
 
 --- Enable Constraints & Indexes
 ALTER TABLE ONLY public.movements ADD CONSTRAINT movements_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.movements ADD CONSTRAINT movements_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE ONLY public.movements ADD CONSTRAINT movements_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON UPDATE CASCADE ON DELETE CASCADE;
 CREATE INDEX movements_product_id_idx ON public.movements USING btree (product_id);
-COMMIT;
+
+
+
+
+---
+--- users
+---
+
+--- Enable Constraints & Indexes
+ALTER TABLE ONLY "public"."users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
+
+---
+--- orders
+---
+
+ALTER TABLE ONLY "public"."orders" ADD CONSTRAINT "orders_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."orders" ADD CONSTRAINT "orders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON UPDATE CASCADE ON DELETE CASCADE;
+
+---
+--- orders_lines
+---
+
+--- Enable Constraints & Indexes
+ALTER TABLE ONLY "public"."orders_lines" ADD CONSTRAINT "orders_lines_pkey" PRIMARY KEY ("order_id", "product_id");
+ALTER TABLE ONLY "public"."orders_lines" ADD CONSTRAINT "orders_lines_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."orders_lines" ADD CONSTRAINT "orders_lines_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."orders_lines" ADD CONSTRAINT "orders_lines_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."orders_lines" ADD CONSTRAINT "orders_lines_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+
 
 
 ---
@@ -186,8 +240,6 @@ COMMIT;
 
 REFRESH MATERIALIZED VIEW "products_availability_cached";
 REFRESH MATERIALIZED VIEW "public_products_cached";
-
-COMMIT;
 
 
 DEALLOCATE "seed_tenants";

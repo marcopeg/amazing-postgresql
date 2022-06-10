@@ -1,6 +1,6 @@
 # HASURA SEED SOURCE
 # it is used in the
-seed?=dummy
+from?=dummy
 
 # HASURA MIGRATION STEPS
 # it is used in the hasura postgres migration scripts to control
@@ -32,6 +32,9 @@ clear: stop
 restart: stop start
 reset: stop clear start
 
+install-cli:
+	@curl -L https://github.com/hasura/graphql-engine/raw/stable/cli/get.sh | bash
+
 
 
 #
@@ -43,12 +46,12 @@ init:
 	@hasura migrate apply --project hasura-ecomm --all-databases
 	@echo "Applying Hasura metadata..."
 	@hasura metadata apply --project hasura-ecomm
-	@echo "Seeding the main database from: \"$(seed).sql\"..."
-	@hasura seed apply --project hasura-ecomm --database-name default --file $(seed).sql
+	@echo "Seeding the main database from: \"$(from).sql\"..."
+	@hasura seed apply --project hasura-ecomm --database-name default --file $(from).sql
 
 seed:
-	@echo "Seeding the main database from: \"$(seed).sql\"..."
-	@hasura seed apply --project hasura-ecomm --database-name default --file $(seed).sql
+	@echo "Seeding the main database from: \"$(from).sql\"..."
+	@hasura seed apply --project hasura-ecomm --database-name default --file $(from).sql
 
 
 #
@@ -79,4 +82,3 @@ migrate-create:
 		--down-sql "SELECT NOW();" \
 		--database-name default \
 		--project hasura-ecomm
-	@hasura migrate apply --project hasura-ecomm --database-name default
