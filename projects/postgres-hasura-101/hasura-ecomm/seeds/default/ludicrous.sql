@@ -138,11 +138,11 @@ ALTER TABLE ONLY public.tenants DROP CONSTRAINT tenants_pkey;
 
 -- 500K Tenants
 EXECUTE "seed_tenants"(1, 50000);
-EXECUTE "seed_tenants"(50000, 100000);
-EXECUTE "seed_tenants"(100000, 200000);
-EXECUTE "seed_tenants"(200000, 300000);
-EXECUTE "seed_tenants"(300000, 400000);
-EXECUTE "seed_tenants"(400000, 500000);
+EXECUTE "seed_tenants"(50001, 100000);
+-- EXECUTE "seed_tenants"(100001, 200000);
+-- EXECUTE "seed_tenants"(200001, 300000);
+-- EXECUTE "seed_tenants"(300001, 400000);
+-- EXECUTE "seed_tenants"(400002, 500000);
 
 -- Enable Constraints & Indexes
 ALTER TABLE ONLY public.tenants ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
@@ -155,11 +155,11 @@ ALTER TABLE ONLY public.tenants ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
 
 -- 5M Products
 EXECUTE "seed_products"(1, 250000);
-EXECUTE "seed_products"(250000, 1000000);
--- EXECUTE "seed_products"(1000000, 2000000);
--- EXECUTE "seed_products"(2000000, 3000000);
--- EXECUTE "seed_products"(3000000, 4000000);
--- EXECUTE "seed_products"(4000000, 5000000);
+EXECUTE "seed_products"(250001, 1000000);
+-- EXECUTE "seed_products"(1000001, 2000000);
+-- EXECUTE "seed_products"(2000001, 3000000);
+-- EXECUTE "seed_products"(3000001, 4000000);
+-- EXECUTE "seed_products"(4000001, 5000000);
 
 -- Enable Constraints & Indexes
 ALTER TABLE ONLY public.products ADD CONSTRAINT products_pkey PRIMARY KEY (id);
@@ -175,26 +175,26 @@ CREATE TRIGGER set_public_products_updated_at BEFORE UPDATE ON public.products F
 
 -- 25M Inventory Movements
 EXECUTE "seed_movements"(1, 250000);
-EXECUTE "seed_movements"(250000, 1000000);
-EXECUTE "seed_movements"(1000000, 2000000);
-EXECUTE "seed_movements"(2000000, 3000000);
-EXECUTE "seed_movements"(3000000, 4000000);
-EXECUTE "seed_movements"(4000000, 5000000);
--- EXECUTE "seed_movements"(5000000, 6000000);
--- EXECUTE "seed_movements"(6000000, 7000000);
--- EXECUTE "seed_movements"(7000000, 8000000);
--- EXECUTE "seed_movements"(8000000, 9000000);
--- EXECUTE "seed_movements"(9000000, 10000000);
--- EXECUTE "seed_movements"(10000000, 11000000);
--- EXECUTE "seed_movements"(11000000, 12000000);
--- EXECUTE "seed_movements"(12000000, 13000000);
--- EXECUTE "seed_movements"(13000000, 14000000);
--- EXECUTE "seed_movements"(14000000, 15000000);
--- EXECUTE "seed_movements"(15000000, 16000000);
--- EXECUTE "seed_movements"(16000000, 17000000);
--- EXECUTE "seed_movements"(17000000, 18000000);
--- EXECUTE "seed_movements"(18000000, 19000000);
--- EXECUTE "seed_movements"(19000000, 20000000);
+EXECUTE "seed_movements"(250001, 1000000);
+EXECUTE "seed_movements"(1000001, 2000000);
+EXECUTE "seed_movements"(2000001, 3000000);
+EXECUTE "seed_movements"(3000001, 4000000);
+EXECUTE "seed_movements"(4000001, 5000000);
+-- EXECUTE "seed_movements"(5000001, 6000000);
+-- EXECUTE "seed_movements"(6000001, 7000000);
+-- EXECUTE "seed_movements"(7000001, 8000000);
+-- EXECUTE "seed_movements"(8000001, 9000000);
+-- EXECUTE "seed_movements"(9000001, 10000000);
+-- EXECUTE "seed_movements"(10000001, 11000000);
+-- EXECUTE "seed_movements"(11000001, 12000000);
+-- EXECUTE "seed_movements"(12000001, 13000000);
+-- EXECUTE "seed_movements"(13000001, 14000000);
+-- EXECUTE "seed_movements"(14000001, 15000000);
+-- EXECUTE "seed_movements"(15000001, 16000000);
+-- EXECUTE "seed_movements"(16000001, 17000000);
+-- EXECUTE "seed_movements"(17000001, 18000000);
+-- EXECUTE "seed_movements"(18000001, 19000000);
+-- EXECUTE "seed_movements"(19000001, 20000000);
 
 --- Enable Constraints & Indexes
 ALTER TABLE ONLY public.movements ADD CONSTRAINT movements_pkey PRIMARY KEY (id);

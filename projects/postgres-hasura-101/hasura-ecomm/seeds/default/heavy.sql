@@ -83,7 +83,7 @@ SELECT
   floor(random() * (10 - 1 + 1) + 1) * 10 AS "price"
 
 -- Set the size of the dataset:
-FROM generate_series(1, 2500) AS "p";
+FROM generate_series(1, 250000) AS "p";
 
 -- Enable Constraints & Indexes
 ALTER TABLE ONLY public.products ADD CONSTRAINT products_pkey PRIMARY KEY (id);
@@ -121,7 +121,7 @@ FROM (
       ORDER BY "id" DESC
       LIMIT 1
     ) - 1 + 1) + 1)) AS "product_id"
-  FROM generate_series(1, 2500) AS "m"
+  FROM generate_series(1, 2500000) AS "m"
 ) AS "s"
 LEFT JOIN "products" AS "p" ON "p"."id" = "s"."product_id";
 
