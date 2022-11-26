@@ -7,6 +7,10 @@ from?=dummy
 # how many up/down migrations to applu
 steps?=1
 
+# HASURA PROJECT
+# it lets you change the source code for your Hasura meta-files
+project?=cqrs
+
 
 
 #
@@ -43,37 +47,39 @@ install-cli:
 
 init:
 	@echo "Applying migrations to all databases..."
-	@hasura migrate apply --project hasura-ecomm --all-databases
+	@hasura migrate apply --project $(project) --all-databases
 	@echo "Applying Hasura metadata..."
-	@hasura metadata apply --project hasura-ecomm
+	@hasura metadata apply --project $(project)
 	@echo "Seeding the main database from: \"$(from).sql\"..."
-	@hasura seed apply --project hasura-ecomm --database-name default --file $(from).sql
+	@hasura seed apply --project $(project) --database-name default --file $(from).sql
 
 seed:
 	@echo "Seeding the main database from: \"$(from).sql\"..."
-	@hasura seed apply --project hasura-ecomm --database-name default --file $(from).sql
+	@hasura seed apply --project $(project) --database-name default --file $(from).sql
 
 
 #
 # PostgreSQL Migration Utilities
 #
 
+migrate-init:
+	@hasura init $(project) --endpoint http://localhost:8080 --admin-secret hasura
+
 migrate:
-	@hasura migrate apply --project hasura-ecomm --database-name default
+	@hasura migrate apply --project $(project) --database-name default
 	
 migrate-status:
-	@hasura migrate status --project hasura-ecomm --database-name default
-
+	@hasura migrate status --project $(project) --database-name default
 
 migrate-up:
-	@hasura migrate apply --project hasura-ecomm --database-name default --up $(steps)
+	@hasura migrate apply --project $(project) --database-name default --up $(steps)
 
 migrate-down:
-	@hasura migrate apply --project hasura-ecomm --database-name default --down $(steps)
+	@hasura migrate apply --project $(project) --database-name default --down $(steps)
 
 migrate-redo:
-	@hasura migrate apply --project hasura-ecomm --database-name default --down $(steps)
-	@hasura migrate apply --project hasura-ecomm --database-name default --up $(steps)
+	@hasura migrate apply --project $(project) --database-name default --down $(steps)
+	@hasura migrate apply --project $(project) --database-name default --up $(steps)
 
 migrate-create:
 	@hasura migrate create \
@@ -81,4 +87,4 @@ migrate-create:
 		--up-sql "SELECT NOW();" \
 		--down-sql "SELECT NOW();" \
 		--database-name default \
-		--project hasura-ecomm
+		--project $(project)
