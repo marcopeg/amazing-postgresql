@@ -9,6 +9,7 @@ pg_password?=postgres
 pg_version?=15
 pg_data?=.docker-data
 file?=default
+jmeter_bin?=/Users/marcopet/dev/tools/JMeter5/apache-jmeter-5.5-SNAPSHOT/bin/jmeter.sh
 
 start:
 	@echo "Starting Postgres..."
@@ -45,9 +46,14 @@ seed:
 
 test-init: drop-db build-schema
 
-test: test-init
-	jmeter -n \
-		-t tests/$(file).jmx \
+test-run:
+	rm -rf ./results/$(file).csv
+	rm -rf ./results/$(file).log
+	touch ./results/$(file).csv
+	touch ./results/$(file).log
+	$(jmeter_bin) -n -t tests/$(file).jmx \
 		-l results/$(file).csv \
 		-j results/$(file).log
+
+test: test-init test-run
 

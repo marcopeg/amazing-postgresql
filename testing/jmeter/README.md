@@ -70,7 +70,7 @@ We are going to test PostgreSQL statements, therefore we must add the Postgres p
 Here is the link to download the driver:
 https://jdbc.postgresql.org/download.html
 
-I then moved the .jar into `/Users/xxx/JMeter5/extras` and linked it directly into my test file.
+I then moved the .jar into `/Users/xxx/JMeter5/lib` and linked it directly into my test file.
 
 ## Setup JMeter for Postgres
 

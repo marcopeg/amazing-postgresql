@@ -38,7 +38,7 @@
           <stringProp name="LoopController.loops">1</stringProp>
         </elementProp>
         <stringProp name="ThreadGroup.num_threads">1</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">0</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
         <stringProp name="ThreadGroup.duration"></stringProp>
         <stringProp name="ThreadGroup.delay"></stringProp>
@@ -47,7 +47,7 @@
       <hashTree>
         <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Empty books table" enabled="true">
           <stringProp name="dataSource">db1</stringProp>
-          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="queryType">Update Statement</stringProp>
           <stringProp name="query">TRUNCATE &quot;public&quot;.&quot;books&quot;;</stringProp>
           <stringProp name="queryArguments"></stringProp>
           <stringProp name="queryArgumentsTypes"></stringProp>
@@ -75,12 +75,12 @@
       <hashTree>
         <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Insert into books" enabled="true">
           <stringProp name="dataSource">db1</stringProp>
-          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="queryType">Update Statement</stringProp>
           <stringProp name="query">INSERT INTO &quot;public&quot;.&quot;books&quot; (&quot;title&quot;, &quot;created_at&quot;)
 SELECT
 	CONCAT(&apos;book &apos;, floor(random() * 9999999 + 1)::int)::text AS &quot;title&quot;,
 	NOW() - &apos;1 year&apos;::interval * random() as  &quot;created_at&quot;
-FROM generate_series(1, 10000) &quot;id&quot;;</stringProp>
+FROM generate_series(1, 1000) &quot;id&quot;;</stringProp>
           <stringProp name="queryArguments"></stringProp>
           <stringProp name="queryArgumentsTypes"></stringProp>
           <stringProp name="variableNames"></stringProp>
@@ -95,7 +95,7 @@ FROM generate_series(1, 10000) &quot;id&quot;;</stringProp>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">1000</stringProp>
+          <stringProp name="LoopController.loops">100</stringProp>
         </elementProp>
         <stringProp name="ThreadGroup.num_threads">10</stringProp>
         <stringProp name="ThreadGroup.ramp_time">1</stringProp>
@@ -111,7 +111,7 @@ FROM generate_series(1, 10000) &quot;id&quot;;</stringProp>
           <stringProp name="query">SELECT * FROM &quot;public&quot;.&quot;books&quot;
 WHERE &quot;created_at&quot; &gt;= NOW() - &apos;1 year&apos;::interval * random()
 ORDER By &quot;created_at&quot; ASC
-limit 1;</stringProp>
+LIMIT 1;</stringProp>
           <stringProp name="queryArguments"></stringProp>
           <stringProp name="queryArgumentsTypes"></stringProp>
           <stringProp name="variableNames"></stringProp>
