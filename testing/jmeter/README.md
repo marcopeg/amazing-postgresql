@@ -55,11 +55,71 @@ In the end, to make the command globally available, I set up an alias in my `~/.
 alias jmeter=/Users/xxx/JMeter5/apache-jmeter-5.5-SNAPSHOT/bin/jmeter.sh
 ```
 
+From now on, you should be able to kick JMeter GUI by running:
 
+```bash
+jmeter
+```
+
+![Start JMeter](./images//jmeter-kickoff.gif)
 
 ### Download JDBC Driver:
+
+We are going to test PostgreSQL statements, therefore we must add the Postgres plugin to JMeter.
 
 Here is the link to download the driver:
 https://jdbc.postgresql.org/download.html
 
 I then moved the .jar into `/Users/xxx/JMeter5/extras` and linked it directly into my test file.
+
+## Setup JMeter for Postgres
+
+The first thing to do is to add the _JDBC Connection Configuration_:
+
+Move into the _Database Connection Configuration_ panel and use the following parameters to connect to your test db:
+
+![Setup JDBC Drivers](./images/jmeter-jdbc-config.gif)
+
+- Database URL: `jdbc:postgresql://localhost:5432/postgres`
+- JDBC Driver Class: `org.postgresql.Driver`
+- Username: `postgres`
+- Password: `postgres`
+
+It is also important to **name the JDBC configuration**, we will need it later on:
+
+![Name the JDBC Configuration](./images//jmeter-odbc-pool-name.jpg)
+
+For my test, I choose the value `db1`.
+
+## Test on SQL Queries
+
+We are now ready to test our first SQL statement:
+
+```sql
+SELECT NOW();
+```
+
+In order to do that, we need to:
+
+1. Add a _Thread Group_
+  - set the _Number of Threads_
+  - set the _Loop Count_
+2. Add a _JDBC Sampler_ with our query
+  - set the _JDBC Connection name_
+  - write the query you want to test
+3. Add a _Summary Report_ sampler to collect the test 
+result
+4. Run the test
+
+![Run a SQL test](./images//jmeter-jdbc-test.gif)
+
+## Test via CLI
+
+Once you are happy with your test scenario, save it to a file as so to be able to perform the test via CLI:
+
+```bash
+jmeter -n \
+  -t tests/select-now.jmx \
+  -l results/select-now.csv \
+  -j results/select-now.log
+```
