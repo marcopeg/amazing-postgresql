@@ -52,7 +52,7 @@ https://ci-builds.apache.org/job/JMeter/job/JMeter-trunk/lastSuccessfulBuild/art
 In the end, to make the command globally available, I set up an alias in my `~/.zshrc` file:
 
 ```bash
-alias jmeter=/Users/xxx/JMeter5/apache-jmeter-5.5-SNAPSHOT/bin/jmeter.sh
+alias jmeter=/Users/xxx/JMeter5/bin/jmeter.sh
 ```
 
 From now on, you should be able to kick JMeter GUI by running:
