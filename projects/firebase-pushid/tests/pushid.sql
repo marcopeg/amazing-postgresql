@@ -1,5 +1,35 @@
 BEGIN;
-SELECT plan(2);
+SELECT plan(4);
+
+SELECT results_eq(
+  $$SELECT "query" FROM (
+      SELECT 'q1' as "query", * FROM pushid_ms('2022-01-01') UNION ALL
+      SELECT 'q2' as "query", * FROM pushid_ms('2021-01-01') UNION ALL
+      SELECT 'q3' as "query", * FROM pushid_ms('2023-01-01') UNION ALL
+      SELECT 'q4' as "query", * FROM pushid_ms('2022-01-01 01:00:00.000') UNION ALL
+      SELECT 'q5' as "query", * FROM pushid_ms('2022-01-01 00:59:59.999')
+      ORDER BY VALUE ASC
+    ) t;
+  $$,
+  $$VALUES ('q2'),  ('q1'), ('q5'), ('q4'), ('q3')
+  $$,
+  'It should generate sortable PushID with millisecond precision'
+);
+
+SELECT results_eq(
+  $$SELECT "query" FROM (
+      SELECT 'q1' as "query", * FROM pushid_mu('2022-01-01') UNION ALL
+      SELECT 'q2' as "query", * FROM pushid_mu('2021-01-01') UNION ALL
+      SELECT 'q3' as "query", * FROM pushid_mu('2023-01-01') UNION ALL
+      SELECT 'q4' as "query", * FROM pushid_mu('2022-01-01 01:00:00.000000') UNION ALL
+      SELECT 'q5' as "query", * FROM pushid_mu('2022-01-01 00:59:59.999999')
+      ORDER BY VALUE ASC
+    ) t;
+  $$,
+  $$VALUES ('q2'),  ('q1'), ('q5'), ('q4'), ('q3')
+  $$,
+  'It should generate sortable PushID with microseconds precision'
+);
 
 SELECT results_eq(
   $$WITH
@@ -35,7 +65,7 @@ SELECT results_eq(
     ('id3', '-4p6bryL--S0UNEh8K3-', '2022-01-01 00:00:00+00', '29,1,31,24,15,45,9,21,4,0'),
     ('id4', '-4p6bryL--S0UNEh8K30', '2022-01-01 00:00:00+00', '29,1,31,24,15,45,9,21,4,1')
   $$,
-  'It should generate PushID to the microseconds'
+  'It should generate sortable PushID within the same microseconds'
 );
 
 SELECT results_eq(
@@ -72,7 +102,7 @@ SELECT results_eq(
     ('id3', '-MsHvtk-S0UNEh8K231-', '2022-01-01 00:00:00+00', '29,1,31,24,15,45,9,21,3,4,2,0'),
     ('id4', '-MsHvtk-S0UNEh8K2310', '2022-01-01 00:00:00+00', '29,1,31,24,15,45,9,21,3,4,2,1')
   $$,
-  'It should generate PushID to the milliseconds'
+  'It should generate sortable PushID within the same millisecond'
 );
 
 

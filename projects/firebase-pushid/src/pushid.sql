@@ -1,6 +1,6 @@
 
 CREATE OR REPLACE FUNCTION "pushid_mu"(
-	PAR_now TIMESTAMPTZ DEFAULT clock_timestamp(),
+	PAR_now TIMESTAMPTZ,
 	PAR_lastPushTime TIMESTAMPTZ DEFAULT '1970-01-01',
 	PAR_lastRandChars TEXT DEFAULT '',
 	OUT "value" VARCHAR(20),
@@ -63,10 +63,8 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 
-
-
 CREATE OR REPLACE FUNCTION "pushid_ms"(
-	PAR_now TIMESTAMPTZ DEFAULT clock_timestamp(),
+	PAR_now TIMESTAMPTZ,
 	PAR_lastPushTime TIMESTAMPTZ DEFAULT '1970-01-01',
 	PAR_lastRandChars TEXT DEFAULT '',
 	OUT "value" VARCHAR(20),
@@ -125,3 +123,5 @@ BEGIN
 	END IF;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
+
+
