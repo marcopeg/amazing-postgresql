@@ -1,38 +1,8 @@
 -- Private function with static timestamp
 
-
--- CREATE OR REPLACE FUNCTION "date2text_mu"(
--- 	PAR_now TIMESTAMPTZ,
--- 	OUT VAR_pid VARCHAR(200)
--- )
--- AS $$
--- DECLARE
--- 	VAR_chars VARCHAR(64) = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
--- 	VAR_ts BIGINT;
--- 	VAR_i INTEGER;
--- 	VAR_timeStampChars VARCHAR(20) DEFAULT '';
--- BEGIN
--- 	VAR_ts = extract(epoch from PAR_now) * 1000000;
--- 	-- RAISE INFO 'VAR_ts: %', VAR_ts;
-	
--- 	-- Convert timestamp into a sortable string:
--- 	FOR VAR_i IN 0..9 LOOP
--- 		VAR_timeStampChars = CONCAT(VAR_timeStampChars, SUBSTRING(VAR_chars from ((VAR_ts % 64) + 1)::INT for 1));
--- 		VAR_ts = FLOOR(VAR_ts/64);
--- 	END LOOP;
-	
--- 	IF VAR_ts != 0 THEN
--- 		RAISE EXCEPTION 'We should have converted the entire timestamp: %', VAR_ts;
--- 	END IF;
-	
--- 	VAR_pid = CONCAT(REVERSE(VAR_timeStampChars));
--- END;
--- $$ LANGUAGE plpgsql IMMUTABLE STRICT;
-
-
 CREATE OR REPLACE FUNCTION "date2txt_mu"(
 	PAR_now TIMESTAMPTZ,
-	OUT "value" VARCHAR(8)
+	OUT "value" VARCHAR(10)
 )
 AS $$
 DECLARE

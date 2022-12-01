@@ -1,6 +1,9 @@
 # Firebase PushID
 
-https://gist.github.com/mikelehen/3596a30bd69384624c11
+Porting _plpgsql_ for generating Firebase's PushID:
+
+- https://firebase.blog/posts/2015/02/the-2120-ways-to-ensure-unique_68 
+- https://gist.github.com/mikelehen/3596a30bd69384624c11
 
 ---
 
@@ -45,9 +48,15 @@ make stop
 
 ---
 
-## Using Timestamp as Primary Key
+## Generate PushIDs
 
+```sql
+-- Generate a PushID using timestamp in milliseconds:
+select * from pushid_ms();
 
+-- Generate a PushID using timestamp in microseconds:
+select * from pushid_mu();
+```
 
 [postgres]: https://www.postgresql.org/
 [docker]: https://www.docker.com/

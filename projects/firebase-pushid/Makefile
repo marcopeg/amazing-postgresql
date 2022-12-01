@@ -37,8 +37,8 @@ schema:
 	clear
 	@echo "Building Project ..."
 	@cat $(CURDIR)/src/date2ts.sql \
-		 $(CURDIR)/src/private.sql \
-		 $(CURDIR)/src/public.sql \
+		 $(CURDIR)/src/date2txt.sql \
+		 $(CURDIR)/src/pushid.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 
 reset: schema
