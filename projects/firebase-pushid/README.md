@@ -11,6 +11,7 @@ Porting _plpgsql_ for generating Firebase's PushID:
 
 - [Prerequisites](#prerequisites)
 - [Run the Project](#run-the-project)
+- [Generate PushIDs](#generate-pushids)
 
 ---
 
