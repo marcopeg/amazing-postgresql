@@ -1,0 +1,1 @@
+-- Public function with NOW()

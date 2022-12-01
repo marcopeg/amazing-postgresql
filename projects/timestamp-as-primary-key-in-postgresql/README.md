@@ -1,6 +1,6 @@
 # Timestamp as Primary Key
 
-Sometimes it may seem a good idea to use `timestamp`as a primary key because even [`bigserial`](https://www.postgresql.org/docs/current/datatype-numeric.html) sequences will eventually run out of range!  
+Sometimes it may seem a good idea to use `timestamp` as a primary key because even [`bigserial`](https://www.postgresql.org/docs/current/datatype-numeric.html) sequences will eventually run out of range!  
 (It may take a while though....)
 
 
@@ -84,7 +84,7 @@ VALUES ('Luke', 'Skywalker');
 
 ## But it is so easy to break it!
 
-There are two ways to fail the choice of `people_v1`schema:
+There are two ways to fail the choice of `people_v1` schema:
 
 1. add multiple values within the same statement
 2. run multiple stametems within the same transaction
@@ -129,9 +129,9 @@ As you can see in [`test/v2.sql`](./tests/v2.sql) and in the [`seed.sql`](./seed
 
 ## A Tricky Solution
 
-I recently found out about the [`row_number()`](https://www.postgresqltutorial.com/postgresql-row_number)function, which gives you the index of the row within the resultset of a query.
+I recently found out about the [`row_number()`](https://www.postgresqltutorial.com/postgresql-row_number) function, which gives you the index of the row within the resultset of a query.
 
-Combining with the possibility to play around with timestamps and text formats, and with the `with`statement... It is possible to use a very simple schema:
+Combining with the possibility to play around with timestamps and text formats, and with the `with` statement... It is possible to use a very simple schema:
 
 ```sql
 CREATE TABLE "public"."people_v3" (
@@ -186,7 +186,7 @@ The obvious alternative is to **use a sequence**.
 
 By using a `bigserial` sequence, it will take about 290 years to exaust the range... **if your system inserts one row every nanosecond**!
 
-Another approach would be to use `uuid`as primary key:
+Another approach would be to use `uuid` as primary key:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -201,7 +201,8 @@ CREATE TABLE "public"."people_uuid" (
 
 This will never go out of range, but you would lose the possibility to sort the records by ID, or to use it as a cursor!
 
-
+Here is a great article on the topic:  
+https://supabase.com/blog/choosing-a-postgres-primary-key
 
 
 [postgres]: https://www.postgresql.org/

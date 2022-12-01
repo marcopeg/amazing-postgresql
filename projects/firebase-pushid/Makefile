@@ -18,7 +18,7 @@ start:
 		-p 5432:5432 \
 		-e POSTGRES_PASSWORD=postgres \
 		-v $(CURDIR)/$(pg_data)/pg:/var/lib/postgresql/data \
-		postgres:$(pg_version)
+		postgres:$(pg_version) -c log_min_messages=INFO
 
 stop:
 	@echo "Stopping Postgres..."
@@ -36,11 +36,9 @@ logs:
 schema:
 	clear
 	@echo "Building Project ..."
-	@cat $(CURDIR)/src/v1.sql \
-		 $(CURDIR)/src/v2.sql \
-		 $(CURDIR)/src/v3.sql \
-		 $(CURDIR)/src/v4.sql \
-		 $(CURDIR)/src/v5.sql \
+	@cat $(CURDIR)/src/date2ts.sql \
+		 $(CURDIR)/src/private.sql \
+		 $(CURDIR)/src/public.sql \
 	> $(CURDIR)/$(pg_data)/init-schema.sql
 
 reset: schema
