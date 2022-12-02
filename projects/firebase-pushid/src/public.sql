@@ -1,7 +1,7 @@
-CREATE TYPE pushid_precision AS ENUM ('ms', 'mu');
+CREATE TYPE "pushid_precision" AS ENUM ('ms', 'mu');
 
 CREATE OR REPLACE FUNCTION "pushid_encode_date"(
-  PAR_precision pushid_precision,
+  PAR_precision "pushid_precision",
 	PAR_now TIMESTAMPTZ DEFAULT clock_timestamp(),
 	OUT "value" VARCHAR(10)
 )
@@ -25,7 +25,7 @@ BEGIN
   END IF;
 
   FOR VAR_i IN 1..VAR_j LOOP
-    VAR_charAt = (VAR_now % 64) + 1;
+    VAR_charAt = mod(VAR_now, 64) + 1;
     "value" = CONCAT(SUBSTRING(VAR_chars from VAR_charAt for 1), "value");
     VAR_now = FLOOR(VAR_now / 64);
   END LOOP;
@@ -40,7 +40,7 @@ $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 
 CREATE OR REPLACE FUNCTION "pushid_generate_v1"(
-  PAR_precision pushid_precision,
+  PAR_precision "pushid_precision",
 	PAR_now TIMESTAMPTZ,
 	PAR_lastPushTime TIMESTAMPTZ DEFAULT '1970-01-01',
 	PAR_lastRandChars TEXT DEFAULT '',
@@ -116,7 +116,7 @@ $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 
 CREATE OR REPLACE FUNCTION "pushid_generate_v1"(
-  PAR_precision pushid_precision DEFAULT 'ms',
+  PAR_precision "pushid_precision" DEFAULT 'ms',
 	OUT "value" VARCHAR(20)
 )
 AS $$

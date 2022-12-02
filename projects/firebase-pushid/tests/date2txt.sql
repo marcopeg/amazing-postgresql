@@ -1,5 +1,26 @@
 BEGIN;
-SELECT plan(2);
+SELECT plan(5);
+
+-- 1669991730001
+SELECT results_eq(
+  $$select * from date2txt_ms('2022-12-02 15:35:30.001+01')$$,
+  $$VALUES ('-NIIFshG'::varchar)$$,
+  't1'
+);
+
+-- 1669991730002
+SELECT results_eq(
+  $$select * from date2txt_ms('2022-12-02 15:35:30.002+01')$$,
+  $$VALUES ('-NIIFshH'::varchar(8))$$,
+  't2'
+);
+
+-- 1669991730003
+SELECT results_eq(
+  $$select * from date2txt_ms('2022-12-02 15:35:30.003+01')$$,
+  $$VALUES ('-NIIFshI'::varchar(8))$$,
+  't3'
+);
 
 SELECT results_eq(
   $$WITH
@@ -50,64 +71,6 @@ SELECT results_eq(
   $$,
   'It should generate a text based k-sortable dates to the microseconds'
 );
-
-
-
--- SELECT results_eq(
---   $$WITH
---     "dates" AS (
---       SELECT * FROM ( VALUES
---         ('2010-11-29 09:00:00.000000+00'),
---         ('2000-11-29 09:00:00.000000+00'),
---         ('2000-11-29 09:00:00.000001+00'),
---         ('2000-11-29 08:59:59.999999+00'),
---         ('1980-11-29 09:00:00.000000+00')
---       ) AS "t" ("pit")
---     )
---     SELECT 
---       date_to_text_mu("pit"::timestamptz)::text as "pushid", 
---       "pit"::text
---     FROM "dates"
---     ORDER BY "pushid" ASC;
---   $$,
---   $$VALUES 
---     ('-0DHkFnXF-', '1980-11-29 09:00:00.000000+00'),
---     ('-2SnDMZ7Ez', '2000-11-29 08:59:59.999999+00'),
---     ('-2SnDMZ7F-', '2000-11-29 09:00:00.000000+00'),
---     ('-2SnDMZ7F0', '2000-11-29 09:00:00.000001+00'),
---     ('-3_XpB0VF-', '2010-11-29 09:00:00.000000+00')
---   $$,
---   'It should generate a text based k-sortable dates to the microsecond'
--- );
-
-
--- SELECT results_eq(
---   $$WITH
---     "dates" AS (
---       SELECT * FROM ( VALUES
---         ('2010-11-29 09:00:00.000000+00'),
---         ('2000-11-29 09:00:00.000000+00'),
---         ('2000-11-29 09:00:00.100000+00'),
---         ('2000-11-29 08:59:59.999999+00'),
---         ('1980-11-29 09:00:00.000000+00')
---       ) AS "t" ("pit")
---     )
---     SELECT 
---       date_to_text_ms("pit"::timestamptz)::text as "pushid", 
---       "pit"::text
---     FROM "dates"
---     ORDER BY "pushid" ASC;
---   $$,
---   $$VALUES 
---     ('3f15t--', '1980-11-29 09:00:00.000000+00'),
---     ('CATbucy-', '2000-11-29 08:59:59.999999+00'),
---     ('CATbud--', '2000-11-29 09:00:00.000000+00'),
---     ('CATbueY-', '2000-11-29 09:00:00.100000+00'),
---     ('GlKq0d--', '2010-11-29 09:00:00.000000+00')
---   $$,
---   'It should generate a text based k-sortable dates to the milliseconds'
--- );
-
 
 
 SELECT * FROM finish();

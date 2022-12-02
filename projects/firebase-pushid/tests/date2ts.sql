@@ -1,5 +1,17 @@
 BEGIN;
-SELECT plan(2);
+SELECT plan(4);
+
+SELECT results_eq(
+  $$SELECT date2ts_ms('2022-12-02 15:35:30.001+01'::timestamptz)$$,
+  $$VALUES (1669991730001)$$,
+  'd1'
+);
+
+SELECT results_eq(
+  $$SELECT date2ts_ms('2022-12-02 15:35:30.002+01'::timestamptz)$$,
+  $$VALUES (1669991730002)$$,
+  'd2'
+);
 
 SELECT results_eq(
   $$WITH
@@ -58,3 +70,8 @@ SELECT results_eq(
   $$,
   'It should generate timestamps to the milliseconds'
 );
+
+SELECT * FROM finish();
+ROLLBACK;
+
+

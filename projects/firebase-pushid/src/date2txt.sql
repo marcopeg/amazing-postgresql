@@ -16,7 +16,7 @@ BEGIN
 	
 	-- Convert timestamp into a sortable string:
 	FOR VAR_i IN 1..10 LOOP
-    VAR_charAt = (VAR_now % 64) + 1;
+    VAR_charAt = mod(VAR_now, 64) + 1;
 		"value" = CONCAT(SUBSTRING(VAR_chars from VAR_charAt for 1), "value");
 		VAR_now = FLOOR(VAR_now / 64);
 	END LOOP;
@@ -44,7 +44,7 @@ BEGIN
 	
 	-- Convert timestamp into a sortable string:
 	FOR VAR_i IN 1..8 LOOP
-    VAR_charAt = (VAR_now % 64) + 1;
+    VAR_charAt = mod(VAR_now, 64) + 1;
 		"value" = CONCAT(SUBSTRING(VAR_chars from VAR_charAt for 1), "value");
 		VAR_now = FLOOR(VAR_now / 64);
 	END LOOP;
