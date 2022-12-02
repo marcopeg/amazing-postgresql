@@ -8,7 +8,7 @@ SELECT results_eq(
       SELECT 'q3' as "query", * FROM pushid_ms('2023-01-01') UNION ALL
       SELECT 'q4' as "query", * FROM pushid_ms('2022-01-01 01:00:00.000') UNION ALL
       SELECT 'q5' as "query", * FROM pushid_ms('2022-01-01 00:59:59.999')
-      ORDER BY VALUE ASC
+      ORDER BY "value" ASC
     ) t;
   $$,
   $$VALUES ('q2'),  ('q1'), ('q5'), ('q4'), ('q3')

@@ -2,3 +2,4 @@
 .docker-data
 node_modules
 .vscode/*.log
+jmeter.log
