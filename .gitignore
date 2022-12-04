@@ -3,3 +3,4 @@
 node_modules
 .vscode/*.log
 jmeter.log
+.DS_Store
