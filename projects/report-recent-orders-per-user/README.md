@@ -1,6 +1,6 @@
 # Report Recent Orders Per User
 
-In this project we dive into the building of a data report out of a simple USERS / ORDERS schema:
+In this project we dive into building a _JSON_ data report out of a simple USERS / ORDERS schema:
 
 ```
 Report all the customers that placed at least three orders in the last week, and serve the data in JSON format, including the last three orders made by each user.
@@ -12,10 +12,16 @@ Report all the customers that placed at least three orders in the last week, and
 
 - [Prerequisites](#prerequisites)
 - [Run the Project](#run-the-project)
+- [Schema V1](#schema-v1)
 - [Find Recent Orders](#find-recent-orders)
 - [Get the Last Three Orders](#get-the-last-three-orders)
 - [Window Functions To Rescue](#window-functions-to-rescue)
 - [Lateral Join for Performances](#lateral-join-for-performances)
+- [Order to JSON](#order-to-json)
+- [One Row per User](#one-row-per-user)
+- [Ordering By Nested Data](#ordering-by-nested-data)
+- [Build the JSON report](#build-the-json-report)
+- [Performance Analysis](#performance-analysis)
 
 ---
 
@@ -30,15 +36,6 @@ The following notes are written using MacOS as running environment and assume yo
 
 ---
 
-## Schema V1
-
-The schema for this project is rather simple:
-
-- `users` will store user data
-- `orders` will store orders placed by users
-
-> The `UserID` will be a simple text like `Luke`.
-
 ## Run the Project
 
 This project simulates a PostgreSQL extension with its own unit tests.  
@@ -51,11 +48,26 @@ make start
 # Build the project and populate it with dummy data
 # so that you can play with it using a client like PSQL
 make seed
+make seed file=randomic-100
+
+# Run queries from the "query" folder:
+make run file=query-name
 
 # Stop the running PostgreSQL and remove the container
 # (data is still persisted to the local disk)
 make stop
 ```
+
+---
+
+## Schema V1
+
+The schema for this project is rather simple:
+
+- `users` will store user data
+- `orders` will store orders placed by users
+
+> The `UserID` will be a simple text like `Luke` as so to make it easier to produce fake data.
 
 ---
 
@@ -69,7 +81,13 @@ FROM "v1"."orders" AS "ord"
 WHERE "ord"."date" >= now() - '1w'::interval;
 ```
 
-It is interesting to note how we can simply cast a string to be used as _interval_.
+```bash
+make run file=001-latest-orders
+```
+
+[SQL source file 🔗](./query/001-latest-orders.sql)
+
+It is interesting to note how we can simply cast a string to be used as [_interval_](https://www.postgresqltutorial.com/postgresql-tutorial/postgresql-interval/).
 
 ## At Least Three Orders
 
@@ -223,13 +241,13 @@ WITH
 "last_orders" AS (
   SELECT "last_orders".*
   FROM (
-    SELECT DISTINCT "user_id"
+    SELECT DISTINCT "user_id" AS "id"
     FROM "v1"."orders"
-  ) "users"
+  ) "usr"
   JOIN LATERAL (
     SELECT *
     FROM "v1"."orders" AS "ord"
-    WHERE "ord"."user_id" = "users"."user_id"
+    WHERE "ord"."user_id" = "usr"."id"
       AND "ord"."date" >= NOW() - '1w'::interval
     ORDER BY "ord"."date" DESC
     LIMIT 3
@@ -280,13 +298,13 @@ WITH
 "last_orders" AS (
   SELECT "last_orders".*
   FROM (
-    SELECT DISTINCT "user_id"
+    SELECT DISTINCT "user_id" AS "id"
     FROM "v1"."orders"
-  ) "users"
+  ) "usr"
   JOIN LATERAL (
     SELECT *
     FROM "v1"."orders" AS "ord"
-    WHERE "ord"."user_id" = "users"."user_id"
+    WHERE "ord"."user_id" = "usr"."id"
       AND "ord"."date" >= NOW() - '1w'::interval
     ORDER BY "ord"."date" DESC
     LIMIT 3
@@ -345,13 +363,13 @@ WITH
 "last_orders" AS (
   SELECT "last_orders".*
   FROM (
-    SELECT DISTINCT "user_id"
+    SELECT DISTINCT "user_id" AS "id"
     FROM "v1"."orders"
-  ) "users"
+  ) "usr"
   JOIN LATERAL (
     SELECT *
     FROM "v1"."orders" AS "ord"
-    WHERE "ord"."user_id" = "users"."user_id"
+    WHERE "ord"."user_id" = "usr"."id"
       AND "ord"."date" >= NOW() - '1w'::interval
     ORDER BY "ord"."date" DESC
     LIMIT 3
@@ -383,7 +401,7 @@ GROUP BY "act"."user_id"
 ORDER BY "act"."user_id" ASC;
 ```
 
-## Ordering Hiccups
+## Ordering By Nested Data
 
 After applying a `GROUP BY` instruction, we lose the possibility to sort by a single order's property.
 
@@ -457,13 +475,13 @@ WITH
 "last_orders" AS (
   SELECT "last_orders".*
   FROM (
-    SELECT DISTINCT "user_id"
+    SELECT DISTINCT "user_id" AS "id"
     FROM "v1"."orders"
-  ) "users"
+  ) "usr"
   JOIN LATERAL (
     SELECT *
     FROM "v1"."orders" AS "ord"
-    WHERE "ord"."user_id" = "users"."user_id"
+    WHERE "ord"."user_id" = "usr"."id"
       AND "ord"."date" >= NOW() - '1w'::interval
     ORDER BY "ord"."date" DESC
     LIMIT 3
@@ -506,3 +524,96 @@ FROM (SELECT
   ) AS "record"
 FROM "users_with_orders") t;
 ```
+
+---
+
+## Performance Analysis
+
+The first test that comes to mind increments both `users` AND `orders`. That is to simulate a realistic increasing load of a very successful online shopping enterprise.
+
+In the last test, we run 100k users that place 2.7M orders within the last 2 weeks.
+That is ~200k orders a day, or ~8000 orders per hour.  
+👉 THAT IS A LOT
+
+> For referece, Amazon.com produces approximately 66k orders per hour **world-wide**. 
+
+|  users |  orders | Returned Rows | First Hit (ms) | Avg. Time (ms) |
+|-------:|--------:|--------------:|---------------:|---------------:|
+|      4 |      13 |             2 |             15 |              3 |
+|    100 |   10500 |            70 |             18 |              7 |
+|   1000 |  105000 |           679 |             60 |             44 |
+|  10000 | 1050000 |          6775 |           1900 |            575 |
+| 100000 | 2750000 |         52000 |         102000 |           8000 |
+
+From this results, we clearly see a fast degrading of performances to a point in which this query is totally useless. (Not that this particular query would be run by every customer on every order... it's a reporting query and it would probably be run once per day or so...)
+
+A second test involves keeping the users steady, and increment the amount of available orders. We fix the users at 1000:
+
+|  orders | Returned Rows | Avg. Time (ms) |
+|--------:|--------------:|---------------:|
+|  105000 |           679 |             40 |
+|  210000 |           906 |             60 |
+|  315000 |           973 |             68 |
+|  420000 |           996 |             68 |
+|  630000 |           999 |             80 |
+|  945000 |          1000 |            104 |
+| 1455000 |          1000 |            150 |
+| 1965000 |          1000 |            200 |
+| 2970000 |          1000 |           1400 |
+
+We grew a bit over the amount of orders that we had in the previous test, still we have nearly 5x better performances!
+
+## Performance Decay with Orders Growth
+
+The first thing that comes to mind is that the `SELECT DISTINCT "user_id" AS "id" FROM "v1"."orders"` may be _somewhat_ responsible.
+
+On one side it guarantees that we run the `JOIN LATERAL` only for users that have orders, on the other, it is a taxing query for the DB to execute.
+
+We can replace that with simple list of all the existing users:
+
+```sql
+"last_orders" AS (
+  SELECT "last_orders".*
+  FROM "v1"."users" AS "usr"
+  JOIN LATERAL (
+    SELECT *
+    FROM "v1"."orders" AS "ord"
+    WHERE "ord"."user_id" = "usr"."id"
+      AND "ord"."date" >= NOW() - '1w'::interval
+    ORDER BY "ord"."date" DESC
+    LIMIT 3
+  ) "last_orders" ON true
+),
+```
+
+This query begets an impressive gain for a small change in the code.
+
+|  orders | Returned Rows | Avg. Time (ms) |
+|--------:|--------------:|---------------:|
+|  105000 |           679 |             14 |
+|  210000 |           906 |             35 |
+|  315000 |           973 |             35 |
+|  420000 |           996 |             33 |
+|  630000 |           999 |             35 |
+|  945000 |          1000 |             35 |
+| 1455000 |          1000 |             37 |
+| 1965000 |          1000 |             38 |
+| 2970000 |          1000 |             40 |
+
+It must be underlined that in the previous test **the amount of user is constant**. The good news is that we keep a relatively constant execution time regardless the increase in the orders.
+
+Now we can repeat the test with the variable users:
+
+|  users |  orders | Returned Rows | First Hit (ms) | Avg. Time (ms) |
+|-------:|--------:|--------------:|---------------:|---------------:|
+|    100 |   10500 |            70 |             17 |              4 |
+|   1000 |  105000 |           679 |             39 |             26 |
+|  10000 | 1050000 |          6775 |            612 |            480 |
+| 100000 | 2750000 |         52000 |          80300 |           8000 |
+
+For sure we got a sensible improvement up to 10k users (which is already a goal that not many company can reach), but then, when we go into the 100k users we can see a drop in performances. 
+
+👉 **Scanning ALL THE USERS is not a scalable solution.**
+
+> **CONCLUSIONS:** the amount of users is the bottleneck of this task.
+
