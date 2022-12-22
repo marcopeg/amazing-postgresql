@@ -255,93 +255,254 @@ FROM "active_users" AS "act"
 LEFT JOIN "last_orders" AS "ord" ON "act"."user_id" = "ord"."user_id";
 ```
 
+## Order to JSON
 
----
+In this step we use the [`json_build_object()`](https://www.postgresql.org/docs/current/functions-json.html#:~:text=foo%22%2C%204%2C%205%5D-,json_build_object,-(%20VARIADIC%20%22any) function to transform the order details into a JSON object:
 
-## Stress Test
+Here is the interesting portion of our query:
 
-100 users, 1000 orders
+```sql
+...
+SELECT
+  "act"."user_id",
+  json_build_object(
+    'id', "ord"."id",
+    'date', "ord"."date",
+    'amount', "ord"."amount"
+  ) AS "order"
+...
+```
 
-| query              | throughput |
-|--------------------|-----------:|
-| join2records       |      904.2 |
-| join2json          |      871.8 |
-| full-json          |      867.3 |
-| single-user        |      862.8 |
-| single-user2       |      852.5 |
-| full-json-document |      851.8 |
+And here is the full version of it:
 
-100 users, 5000 orders
+```sql
+WITH
+"last_orders" AS (
+  SELECT "last_orders".*
+  FROM (
+    SELECT DISTINCT "user_id"
+    FROM "v1"."orders"
+  ) "users"
+  JOIN LATERAL (
+    SELECT *
+    FROM "v1"."orders" AS "ord"
+    WHERE "ord"."user_id" = "users"."user_id"
+      AND "ord"."date" >= NOW() - '1w'::interval
+    ORDER BY "ord"."date" DESC
+    LIMIT 3
+  ) "last_orders" ON true
+),
+"users_orders" AS (
+  SELECT
+    "user_id", 
+    COUNT(*) AS "tot_orders"
+  FROM "last_orders"
+  GROUP BY "user_id"
+),
+"active_users" AS (
+  SELECT * FROM "users_orders"
+  WHERE "tot_orders" >= 3
+)
+SELECT
+  "act"."user_id",
+  json_build_object(
+    'id', "ord"."id",
+    'date', "ord"."date",
+    'amount', "ord"."amount"
+  ) AS "order"
+FROM "active_users" AS "act"
+LEFT JOIN "last_orders" AS "ord" ON "act"."user_id" = "ord"."user_id";
+```
 
-| query              | throughput |
-|--------------------|-----------:|
-| join2records       |      409.2 |
-| full-json          |      244.9 |
-| join2json          |      242.0 |
-| single-user        |      224.0 |
-| single-user2       |      222.6 |
-| full-json-document |      221.2 |
+## One Row per User
 
-100 users, 10000 orders
+The result we got so far is not really fulfilling the assigment (yet). We need to output a single report, but so far we have one row per order.
 
-| query              | throughput |
-|--------------------|-----------:|
-| join2records       |      202.5 |
-| full-json          |      131.6 |
-| join2json          |      124.4 |
-| single-user        |      117.5 |
-| single-user2       |      115.6 |
-| full-json-document |      112.2 |
+A step towards the solution would be to `GROUP` our results `BY` the `user_id` and collect the list of orders as an `ARRAY` of some kind.
 
-100 users, 50000 orders
+The grouping can be achieved by appending the relative instruction to our query:
 
-| query              | throughput |
-|--------------------|-----------:|
-| join2records       |       44.4 |
-| full-json          |       28.4 |
-| join2json          |       26.6 |
-| full-json-document |       24.8 |
-| single-user        |       24.0 |
-| single-user2       |       23.8 |
+```sql
+GROUP BY "act"."user_id"
+```
 
+Next we need to aggregate the JSON `order` that we've previously built into an array using [`json_agg`](https://www.postgresql.org/docs/9.5/functions-aggregate.html#:~:text=equivalent%20to%20bool_and-,json_agg,-(expression)):
 
+```sql
+json_agg(
+  json_build_object(
+    'id', "ord"."id",
+    'date', "ord"."date",
+    'amount', "ord"."amount"
+  )
+) AS "orders"
+```
 
-100 users, 100000 orders
+Here is the full query:
 
-| query              | throughput |
-|--------------------|-----------:|
-| join2records       |            |
-| full-json          |            |
-| join2json          |            |
-| single-user        |            |
-| single-user2       |            |
-| full-json-document |            |
+```sql
+WITH
+"last_orders" AS (
+  SELECT "last_orders".*
+  FROM (
+    SELECT DISTINCT "user_id"
+    FROM "v1"."orders"
+  ) "users"
+  JOIN LATERAL (
+    SELECT *
+    FROM "v1"."orders" AS "ord"
+    WHERE "ord"."user_id" = "users"."user_id"
+      AND "ord"."date" >= NOW() - '1w'::interval
+    ORDER BY "ord"."date" DESC
+    LIMIT 3
+  ) "last_orders" ON true
+),
+"users_orders" AS (
+  SELECT
+    "user_id", 
+    COUNT(*) AS "tot_orders"
+  FROM "last_orders"
+  GROUP BY "user_id"
+),
+"active_users" AS (
+  SELECT * FROM "users_orders"
+  WHERE "tot_orders" >= 3
+)
+SELECT
+  "act"."user_id",
+  json_agg(
+    json_build_object(
+      'id', "ord"."id",
+      'date', "ord"."date",
+      'amount', "ord"."amount"
+    )
+  ) AS "orders"
+FROM "active_users" AS "act"
+LEFT JOIN "last_orders" AS "ord" ON "act"."user_id" = "ord"."user_id"
+GROUP BY "act"."user_id"
+ORDER BY "act"."user_id" ASC;
+```
 
+## Ordering Hiccups
 
+After applying a `GROUP BY` instruction, we lose the possibility to sort by a single order's property.
 
-100 users, 50000 orders
+Ordering the results by the User's ID is rather simple:
 
-| query              | throughput |
-|--------------------|-----------:|
-| join2records       |            |
-| full-json          |            |
-| join2json          |            |
-| single-user        |            |
-| single-user2       |            |
-| full-json-document |            |
+```sql
+ORDER BY "act"."user_id" ASC
+```
 
+But if we want to sort by the most recent order, we have to use other aggregation functions:
 
+```sql
+SELECT
+  ...
+  min("ord"."date") AS "oldest_order",
+  max("ord"."date") AS "latest_order"
 
-100 users, 50000 orders
+...
+ORDER BY "latest_order" DESC;
+```
 
-| query              | throughput |
-|--------------------|-----------:|
-| join2records       |            |
-| full-json          |            |
-| join2json          |            |
-| single-user        |            |
-| single-user2       |            |
-| full-json-document |            |
+> NOTE: this will add on the computational efforts!
 
+## Build the JSON report
 
+The last step into fulfilling the requirement would be to nicely pack all those informations into one single JSON document.
 
+We move the previous query into the CTE under the name `users_with_orders`, so to use it in a further JSON aggregation and produce the desired output:
+
+```sql
+...
+SELECT
+  json_build_object(
+    'users', json_agg("record")
+  ) AS "report"
+FROM (
+  SELECT
+    json_build_object(
+      'id', "user_id",
+      'orders', "orders"
+    ) AS "record"
+  FROM "users_with_orders"
+) t;
+```
+
+The sub-query `t` will simply rewrite each record into a JSON object, also skipping the `latest_order` info that we used for sorting purpose only.
+
+Then we aggregate such results one more time in the final JSON document that will have the following structure:
+
+```json
+{
+  "users": [
+    {
+      "id": "user-1",
+      "orders": [
+        {
+          "id": 1500281,
+          "date": "2022-12-20T17:22:32.349028+00:00",
+          "amount": 232
+        }
+      ]
+    }
+  ]
+}
+```
+
+Here is our final query:
+
+```sql
+WITH
+"last_orders" AS (
+  SELECT "last_orders".*
+  FROM (
+    SELECT DISTINCT "user_id"
+    FROM "v1"."orders"
+  ) "users"
+  JOIN LATERAL (
+    SELECT *
+    FROM "v1"."orders" AS "ord"
+    WHERE "ord"."user_id" = "users"."user_id"
+      AND "ord"."date" >= NOW() - '1w'::interval
+    ORDER BY "ord"."date" DESC
+    LIMIT 3
+  ) "last_orders" ON true
+),
+"users_orders" AS (
+  SELECT
+    "user_id", 
+    COUNT(*) AS "tot_orders"
+  FROM "last_orders"
+  GROUP BY "user_id"
+),
+"active_users" AS (
+  SELECT * FROM "users_orders"
+  WHERE "tot_orders" >= 3
+),
+"users_with_orders" AS (
+  SELECT
+    "act"."user_id",
+    json_agg(
+      json_build_object(
+        'id', "ord"."id",
+        'date', "ord"."date",
+        'amount', "ord"."amount"
+      )
+    ) AS "orders"
+  FROM "active_users" AS "act"
+  LEFT JOIN "last_orders" AS "ord" ON "act"."user_id" = "ord"."user_id"
+  GROUP BY "act"."user_id"
+  ORDER BY "act"."user_id" ASC
+)
+SELECT
+  json_build_object(
+    'users', json_agg("record")
+  ) AS "report"
+FROM (SELECT
+  json_build_object(
+    'id', "user_id",
+    'orders', "orders"
+  ) AS "record"
+FROM "users_with_orders") t;
+```
