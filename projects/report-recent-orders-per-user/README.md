@@ -22,6 +22,7 @@ Report all the customers that placed at least three orders in the last week, and
 - [Ordering By Nested Data](#ordering-by-nested-data)
 - [Build the JSON report](#build-the-json-report)
 - [Performance Analysis](#performance-analysis)
+- [Performance Decay with Orders Growth](#performance-decay-with-orders-growth)
 
 ---
 
@@ -609,7 +610,7 @@ Now we can repeat the test with the variable users:
 |    100 |   10500 |            70 |             17 |              4 |
 |   1000 |  105000 |           679 |             39 |             26 |
 |  10000 | 1050000 |          6775 |            612 |            480 |
-| 100000 | 2750000 |         52000 |          80300 |           8000 |
+| 100000 | 2750000 |         52000 |          80300 |      **48900** |
 
 For sure we got a sensible improvement up to 10k users (which is already a goal that not many company can reach), but then, when we go into the 100k users we can see a drop in performances. 
 

@@ -16,6 +16,7 @@ Tag along in this journey and you will learn how a single tool can offer advance
 - [One Tool to Handle 'em All](#one-tool-to-handle-em-all)
 - [Prerequisites for Running the Examples](#prerequisites-for-running-the-examples)
 - [Licence](#licence)
+- [PostgreSQL Resources Index - useful links related to PostgreSQL](./INDEX.md)
 
 👉 Projects and Tutorials:
 
