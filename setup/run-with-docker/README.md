@@ -35,7 +35,7 @@ docker run \
   -p 5432:5432 \
   -v $(pwd)/.docker-data:/var/lib/postgresql/data \
   -e POSTGRES_PASSWORD=postgres \
-  postgres:13.2
+  postgres:16
 ```
 
 - `--rm` will automatically remove the containers once you stop it (`Ctrl + c`)
@@ -59,12 +59,16 @@ It is common to describe a complex application as a collection of containers usi
 This way, you can easily start/stop containers using:
 
 ```bash
-docker-compose up
+docker compose up
 
-docker-compose down
+docker compose down
 ```
 
 And enjoy container-to-container automatic DNS mapping using the container's names or the [_links_ attribute](https://docs.docker.com/compose/compose-file/compose-file-v3/#links).
+
+Check out our [docker-compose.yml](./docker-compose.yml) to learn the minimal configuration for running Postgres.
+
+You can now open `:8080` and enjoy [Adminer](https://hub.docker.com/_/adminer/) as simple user interface to your db.
 
 ---
 
@@ -86,9 +90,9 @@ Or we can spin up a new container to run `psql` and link it to the running Postg
 docker run \
   --rm \
   -it \
-  --link pg:pg \
-  postgres:13.2 \
-  psql postgresql://postgres:postgres@pg:5432/postgres
+  --network="container:pg" \
+  postgres:16 \
+  psql postgresql://postgres:postgres@localhost:5432/postgres
 ```
 
 - `-it` will attach your terminal to the container's shell
@@ -111,9 +115,9 @@ Using a dedicated container:
 docker run \
   --rm \
   -it \
-  --link pg:pg \
-  postgres:13.2 \
-  psql postgresql://postgres:postgres@pg:5432/postgres \
+  --network="container:pg" \
+  postgres:16 \
+  psql postgresql://postgres:postgres@localhost:5432/postgres \
   -c 'select now();'
 ```
 
@@ -134,9 +138,9 @@ Using a dedicated container:
 docker run \
   --rm \
   -i \
-  --link pg:pg \
-  postgres:13.2 \
-  psql postgresql://postgres:postgres@pg:5432/postgres \
+  --network="container:pg" \
+  postgres:16 \
+  psql postgresql://postgres:postgres@localhost:5432/postgres \
   < example.sql
 ```
 

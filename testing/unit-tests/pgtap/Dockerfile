@@ -3,7 +3,7 @@
 #
 # But with PGTAP updated to version v1.1.0
 
-FROM postgres:13.2
+FROM postgres:16
 
 RUN apt-get update \
     && apt-get install -y build-essential git-core libv8-dev curl postgresql-server-dev-$PG_MAJOR \

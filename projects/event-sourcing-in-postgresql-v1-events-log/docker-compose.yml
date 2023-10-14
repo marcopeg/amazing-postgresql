@@ -7,7 +7,7 @@ services:
   #
   postgres:
     container_name: test-db
-    image: postgres:13.2
+    image: postgres:16
     ports:
       - ${PG_PORT:-5432}:5432
     volumes:
