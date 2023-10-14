@@ -21,6 +21,7 @@ Tag along in this journey and you will learn how a single tool can offer advance
 👉 Projects and Tutorials:
 
 - [How to run Postgres](./setup/run-with-docker)
+- [How to run simple migrations using Makefile](./setup/make-migrations)
 - Testing in PostgreSQL
   - [Unit Tests on PostgreSQL](./testing/unit-tests)
   - [Load Test on PostgreSQL](./testing/load-test)

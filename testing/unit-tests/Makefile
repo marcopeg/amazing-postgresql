@@ -6,7 +6,7 @@
 #
 pg_name?=test-db
 pg_password?=postgres
-pg_version?=13.2
+pg_version?=16
 pg_data?=.docker-data
 
 start:
@@ -32,20 +32,18 @@ logs:
 	@echo "Attaching to Postgres logs..."
 	@docker container logs -f $(pg_name)
 
-schema:
-	clear
-	@echo "Building Project ..."
-	@cat \
-		$(CURDIR)/src/foobar.sql \
-	> $(CURDIR)/$(pg_data)/init-schema.sql
+schema: $(CURDIR)/src/*
+	@for file in $(shell find $(CURDIR)/src/ -name 'up.sql' | sort ) ; do \
+		echo "---> Apply:" $$(basename $$(dirname $$file))/$$(basename $$file); \
+		docker exec -i $(pg_name) psql -U postgres test-db < $${file}; \
+	done
 
-reset: schema
+reset:
 	clear
 	@echo "Reset Database Schema ..."
 	@docker exec -i $(pg_name) psql -U postgres < reset-db.sql
-	@docker exec -i $(pg_name) psql -U postgres test-db < $(CURDIR)/$(pg_data)/init-schema.sql
 
-test: reset
+run:
 	clear
 	@echo "Running Unit Tests ..."
 	@docker run --rm \
@@ -54,4 +52,7 @@ test: reset
 		-v $(CURDIR)/tests/:/t \
 		pgtap \
     	-h db -u postgres -w $(pg_password) -d test-db -t '/t/*.sql'
+
+test: reset schema run
+	
 
