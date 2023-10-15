@@ -235,7 +235,7 @@ WITH
 INSERT INTO "users" ("uname", "bday", "age")
 SELECT * FROM "user_data"
 
--- NOTE: randomic values can easily generate duplicate!
+-- NOTE: randomic values can easily generate duplicates!
 ON CONFLICT ON CONSTRAINT "users_uname_key" DO NOTHING
 RETURNING *;
 ```

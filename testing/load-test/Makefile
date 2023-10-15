@@ -26,10 +26,10 @@ psql:
 	@echo "Connecting to the database ("quit" to exit) ..."
 	@docker exec -it $(pg_name) psql -U postgres postgres
 
-bench-init:
+bench.init:
 	@echo "Populating PostgreSQL with dummy data ..."
 	@docker exec -it $(pg_name) pgbench -U postgres -i -s 50 postgres
 
-bench-run:
+bench.run:
 	@echo "Running pgbench on target database ..."
 	@docker exec -it $(pg_name) pgbench -U postgres -c 10 -j 2 -t 10000 postgres
