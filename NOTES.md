@@ -51,3 +51,58 @@ https://www.postgresqltutorial.com/postgresql-temporary-table/
 
 Explanation on functions caching:  
 https://www.enterprisedb.com/edb-docs/d/postgresql/reference/manual/13.1/plpgsql-implementation.html
+
+
+Generate named columns:
+
+```sql
+SELECT 
+  1,
+  '{}'::json,
+  'foo';
+```
+
+yields
+
+```
+ ?column? | json | ?column? 
+----------+------+----------
+        1 | {}   | foo
+(1 row)
+```
+
+but you can assign names to the columns:
+
+```sql
+SELECT
+  1 AS "c1",
+  '{}'::json AS "c2",
+  'foo' AS "c3";
+```
+
+yields
+
+```
+  c1 | c2 | c3  
+----+----+-----
+  1 | {} | foo
+(1 row)
+```
+
+in a CTE:  
+_this is useful to generate configs at the beginning of a CTE_
+
+```sql
+WITH
+"config"("num", "doc") AS (VALUES (1::int, '{}'::json))
+SELECT * FROM config;
+```
+
+yields
+
+```
+ num | doc 
+-----+-----
+   1 | {}
+(1 row)
+```
