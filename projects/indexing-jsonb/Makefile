@@ -19,6 +19,9 @@ logs:
 	@echo "Attaching to Postgres logs..."
 	@docker compose logs -f postgres
 
+
+
+
 #
 # Migrations
 #
@@ -88,3 +91,6 @@ test: test.init run
 .PHONY: seed
 seed:
 	@docker exec -i pg psql -U postgres $(db) < seed/$(from).sql
+
+query:
+	@docker exec -i pg psql -U postgres $(db) < sql/$(from).sql

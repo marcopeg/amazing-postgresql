@@ -496,7 +496,7 @@ WITH
       round(
         (random() * ("releaseMax" - "releaseMin" + 1) + "releaseMin") 
       )
-    )::FLOAT AS "release"
+    )::FLOAT AS "released"
 
     -- ProductionCost
   , (
@@ -547,7 +547,7 @@ SELECT
   json_build_object(
       'title', "title"
     , 'rating', "rating"
-    , 'release_date', "release"
+    , 'released', "released"
     , 'genre', "genre"
     , 'kpis', json_build_object(
         'production_cost', "productionCost"

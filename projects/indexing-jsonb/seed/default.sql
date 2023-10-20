@@ -1,3 +1,4 @@
+BEGIN;
 TRUNCATE TABLE movies_json RESTART IDENTITY;
 INSERT INTO movies_json (data)
 VALUES
@@ -152,7 +153,27 @@ VALUES
             "sound_director": "Charles L. Campbell",
             "cast": ["Liam Neeson", "Ralph Fiennes", "Ben Kingsley"]
         }
+    }'),
+    -- Movie 9
+    ('{
+        "title": "Titanic",
+        "rating": 7.8,
+        "released": 1997,
+        "genre": ["Drama", "Romance"],
+        "kpis": {
+            "production_cost": 200000000,
+            "revenue": 2187463944,
+            "cast_size": 10,
+            "duration": 195
+        },
+        "people": {
+            "director": "James Cameron",
+            "director_of_photography": "Russell Carpenter",
+            "sound_director": "Gary Rydstrom",
+            "cast": ["Leonardo DiCaprio", "Kate Winslet", "Billy Zane"]
+        }
     }')
+
 ;
 
 
@@ -313,5 +334,25 @@ VALUES
             "sound_director": "Charles L. Campbell",
             "cast": ["Liam Neeson", "Ralph Fiennes", "Ben Kingsley"]
         }
+    }'),
+    -- Movie 9
+    ('{
+        "title": "Titanic",
+        "rating": 7.8,
+        "released": 1997,
+        "genre": ["Drama", "Romance"],
+        "kpis": {
+            "production_cost": 200000000,
+            "revenue": 2187463944,
+            "cast_size": 10,
+            "duration": 195
+        },
+        "people": {
+            "director": "James Cameron",
+            "director_of_photography": "Russell Carpenter",
+            "sound_director": "Gary Rydstrom",
+            "cast": ["Leonardo DiCaprio", "Kate Winslet", "Billy Zane"]
+        }
     }')
 ;
+COMMIT;
