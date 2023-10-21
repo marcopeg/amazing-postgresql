@@ -120,3 +120,21 @@ seed:
 
 query:
 	@docker exec -i pg psql -U postgres $(db) < projects/$(project)/sql/$(from).sql
+
+# https://www.postgresql.org/docs/current/pgbench.html
+env?="F=F"
+numClients?=5
+numThreads?=10
+numTransactions?=10
+bench:
+	@clear
+	@echo "\n# Running PgBench to:\n> db=$(db); query=$(project)/sql/$(project).sql\n"
+	@docker run --rm \
+		-e $(env) \
+		-e PGPASSWORD=postgres \
+		-v $(CURDIR)/projects/$(project)/sql:/sql:ro \
+		--network=$(shell basename $(CURDIR))_default \
+		postgres:16 \
+		pgbench -h postgres -p 5432 -U postgres -d $(db) \
+			-c $(numClients) -j $(numThreads) -t $(numTransactions) \
+			-f /sql/$(from).sql
