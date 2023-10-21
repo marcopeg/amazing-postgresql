@@ -32,15 +32,33 @@ SELECT
   concat('word-', floor(random() * 5000 + 1)::integer)
 FROM generate_series(1, 100000) "n", "raw_data";
 
--- Make a copy of the table to play around with indexes:
+-- Make some copies of the table to play around with indexes:
+
 DROP TABLE IF EXISTS "users_idx_1";
 CREATE UNLOGGED TABLE "users_idx_1" AS TABLE "users";
+ALTER TABLE "users_idx_1" ADD PRIMARY KEY ("id");
+CREATE SEQUENCE "users_idx_1_id_seq";
+ALTER TABLE "users_idx_1" ALTER COLUMN "id" SET DEFAULT nextval('"users_idx_1_id_seq"'::regclass);
+ALTER SEQUENCE "users_idx_1_id_seq" OWNED BY "users_idx_1"."id";
+SELECT setval('users_idx_1_id_seq', (SELECT MAX("id") FROM "users_idx_1"));
 
 DROP TABLE IF EXISTS "users_idx_2";
 CREATE UNLOGGED TABLE "users_idx_2" AS TABLE "users";
+ALTER TABLE "users_idx_2" ADD PRIMARY KEY ("id");
+CREATE SEQUENCE "users_idx_2_id_seq";
+ALTER TABLE "users_idx_2" ALTER COLUMN "id" SET DEFAULT nextval('"users_idx_2_id_seq"'::regclass);
+ALTER SEQUENCE "users_idx_2_id_seq" OWNED BY "users_idx_2"."id";
+SELECT setval('users_idx_2_id_seq', (SELECT MAX("id") FROM "users_idx_2"));
 
 DROP TABLE IF EXISTS "users_idx_3";
 CREATE UNLOGGED TABLE "users_idx_3" AS TABLE "users";
+ALTER TABLE "users_idx_3" ADD PRIMARY KEY ("id");
+CREATE SEQUENCE "users_idx_3_id_seq";
+ALTER TABLE "users_idx_3" ALTER COLUMN "id" SET DEFAULT nextval('"users_idx_3_id_seq"'::regclass);
+ALTER SEQUENCE "users_idx_3_id_seq" OWNED BY "users_idx_3"."id";
+SELECT setval('users_idx_3_id_seq', (SELECT MAX("id") FROM "users_idx_3"));
+
+
 
 
 -- Enable logging for the tables:

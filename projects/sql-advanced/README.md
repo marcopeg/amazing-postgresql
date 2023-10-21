@@ -420,7 +420,7 @@ ORDER BY table_name ASC;
 ```
 
 ```bash
-make query from=400_size-tables
+make query from=320_size-tables
 ```
 
 Running this query we can clearly see that the tables are exactly the same.
@@ -449,7 +449,7 @@ ORDER BY table_name, index_name;
 ```
 
 ```bash
-make query from=401_size-indexes
+make query from=321_size-indexes
 ```
 
 From this results, by instance, it appears clear that `hash` indexes are more expensive than `b-tree`.
@@ -478,7 +478,36 @@ From this results, by instance, it appears clear that `hash` indexes are more ex
  users_idx_3 | users_idx_3_favourite_number_part  | 8192 bytes
 ```
 
+So the general rule of the thumb is that indexes require more disk space, and more important, more IOPS!!!
+
+Here is a convenient query to check out disk-size stats for your db:
+
+```bash
+make query from=322_stats
+```
+
 ### Insert Performance
+
+```bash
+make bench numTransactions=100 from=323_insert1
+make bench numTransactions=100 from=323_insert2
+make bench numTransactions=100 from=323_insert3
+make bench numTransactions=100 from=323_insert4
+```
+
+Here are the results running this on GitHub Codespaces:  
+(and I ran those commands multiple times to average out)
+
+|    Table    |  Ops    | Index   |
+|-------------|---------|---------|
+| users       |  72.94  | none    |
+| users_idx_1 |  30.78  | btree   |
+| users_idx_2 |  10.46  | hash    |
+| users_idx_3 |  74.85  | partial |
+
+The `hash` index yields the worst possible write performances, while adding a few `b-tree` indexes already cut the write performances in half.
+
+While writing data, all the relative indexes must be written as well. 
 
 ## Constraints
 
