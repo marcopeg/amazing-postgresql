@@ -1,3 +1,6 @@
+DROP SCHEMA "public" CASCADE;
+CREATE SCHEMA "public";
+
 -- Table without indexes:
 DROP TABLE IF EXISTS "users";
 CREATE UNLOGGED TABLE "users" (

@@ -509,15 +509,82 @@ The `hash` index yields the worst possible write performances, while adding a fe
 
 While writing data, all the relative indexes must be written as well. 
 
-## Constraints
+## Checks Constraints
 
-re-create the gender but apply a CHECK constraint
-play with/without indexes
+A way to improve the previous schema would be to apply static checks for the low cardinality of the `gender`:
+
+```sql
+"gender" TEXT CHECK (gender IN ('M', 'F', 'O')),
+```
+
+Here is the query to create the new schema:
+
+```bash
+make query from=350_schema
+```
+
+Unfortunately, as the following query demonstrates, the checks are not used at read-time to avoind going through the entire dataset when looking for a value that is not possible anyway:
+
+```bash
+make query from=351_gender
+```
+
+> Checks constraints are great to ensure data integrity at write-time, but can't offer help while reading.
 
 ## Custom Types
 
-same scenario but with custom types
+Another possibility to improve things is to define a **custom type** for low cardinality fields:
 
+```sql
+CREATE TYPE GENDER AS ENUM ('M', 'F', 'O');
 
+CREATE UNLOGGED TABLE "users" (
+  ...
+  "gender" GENDER,
+```
+
+Here is the query to create the new schema:
+
+```bash
+make query from=360_schema
+```
+
+This approach has the advantage that queries that try to search for values that can not exists will fail:
+
+```bash
+make query from=361_gender
+```
+
+Although custom types make for a great way to add strict rules to the values for low cardinality fields, they might become quite cumbersome when it comes the time to make changes:
+
+```sql
+ALTER TYPE GENDER ADD VALUE 'I am a Fridge';
+```
+
+It is also NOT POSSIBLE to remove a value from an existing ENUM (custom type).
+
+In such a case, you must create a new TYPE, switch it into the table, then delete the previous one.
+
+```sql
+-- Create the new ENUM type without 'M'
+CREATE TYPE GENDER_NEW AS ENUM ('F', 'O', 'Fridge');
+
+-- Update the table to use the new ENUM type
+ALTER TABLE "users" ALTER COLUMN "gender" TYPE GENDER_NEW USING "gender"::text::GENDER_NEW;
+
+-- Drop the old ENUM type
+DROP TYPE GENDER;
+
+-- Rename the new ENUM type to the original name
+ALTER TYPE GENDER_NEW RENAME TO GENDER;
+```
+
+Also, you would have to first update the rows that refer to the value that you want to remove. 
+
+This could be a real pain!
+
+```sql
+UPDATE "users" SET "gender" = 'Fridge' WHERE "gender" = 'M';
+```
 
 ## Documents
