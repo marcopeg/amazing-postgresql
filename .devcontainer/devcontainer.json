@@ -1,0 +1,32 @@
+{
+  "customizations": {
+      "codespaces": {
+          "openFiles": [
+              "README.md"
+          ]
+      },
+      "vscode": {
+          "extensions": [
+              "ms-azuretools.vscode-docker",
+              "ckolkman.vscode-postgres",
+              "ms-vscode.makefile-tools",
+              "esbenp.prettier-vscode"
+    ]
+      }
+  },
+  "forwardPorts": [8080],
+  "portsAttributes": {
+      "8080": {
+          "label": "Adminer Web Client",
+          "onAutoForward": "ignore"
+      },
+      "5432": {
+          "label": "Postgres",
+          "onAutoForward": "ignore"
+      }
+  },
+  "postAttachCommand": "/bin/bash .devcontainer/setup.sh",
+  "containerEnv": {
+      "DOCKER_COMPOSE_TARGET": "codespace"
+  }
+}

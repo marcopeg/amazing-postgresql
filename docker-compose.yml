@@ -1,0 +1,29 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    # "container_name" is optional
+    # we use it in this example so that the other bash commands in the
+    # tutorial can target the correct running postgres container
+    container_name: pg
+    # you could technically skip this setting and avoid exposing the
+    # PostgreSQL process itself.
+    # Access can be granted through an application like "adminer" or
+    # a custom application written in Node or other languages.
+    ports:
+      - 5432:5432
+    volumes:
+      - ./.docker-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgres
+
+  adminer:
+    image: adminer:4.8.1
+    ports:
+      - 8080:8080
+    links:
+      - postgres:db
+    
+networks:
+  default:
+    driver: bridge
