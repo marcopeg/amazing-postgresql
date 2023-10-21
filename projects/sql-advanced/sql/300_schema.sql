@@ -35,8 +35,10 @@ FROM generate_series(1, 100000) "n", "raw_data";
 -- Make a copy of the table to play around with indexes:
 DROP TABLE IF EXISTS "users_idx_1";
 CREATE UNLOGGED TABLE "users_idx_1" AS TABLE "users";
+
 DROP TABLE IF EXISTS "users_idx_2";
 CREATE UNLOGGED TABLE "users_idx_2" AS TABLE "users";
+
 DROP TABLE IF EXISTS "users_idx_3";
 CREATE UNLOGGED TABLE "users_idx_3" AS TABLE "users";
 

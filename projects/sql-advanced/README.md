@@ -398,6 +398,86 @@ make query from=308_numbers3
 
 ### Index Sizes
 
+We saw that indexing can speed up reads by much. 
+
+But in Life nothing comes for free!
+
+Let's now analyze the first downside of indexes:  
+**DISK SPACE**
+
+Let's begin with analyzing a table's metrics for disk utilization:
+
+```sql
+SELECT 
+  table_name, 
+  pg_size_pretty(pg_total_relation_size(table_name::text) - pg_indexes_size(table_name::text)) AS table_size
+FROM (
+  SELECT table_name
+  FROM information_schema.tables
+  WHERE table_schema = 'public'
+) AS sub
+ORDER BY table_name ASC;
+```
+
+```bash
+make query from=400_size-tables
+```
+
+Running this query we can clearly see that the tables are exactly the same.
+
+```
+ table_name  | table_size 
+-------------+------------
+ users       | 9120 kB
+ users_idx_1 | 9120 kB
+ users_idx_2 | 9120 kB
+ users_idx_3 | 9120 kB
+```
+
+And now we can get the same info relative to the indexes:
+
+```sql
+SELECT 
+  indrelid::regclass AS table_name, 
+  indexrelid::regclass AS index_name, 
+  pg_size_pretty(pg_relation_size(indexrelid::regclass)) AS index_size
+FROM pg_index
+JOIN pg_class ON pg_class.oid = pg_index.indexrelid
+JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+WHERE nspname = 'public'
+ORDER BY table_name, index_name;
+```
+
+```bash
+make query from=401_size-indexes
+```
+
+From this results, by instance, it appears clear that `hash` indexes are more expensive than `b-tree`.
+
+```
+ table_name  |             index_name             | index_size 
+-------------+------------------------------------+------------
+ users       | users_pkey                         | 2208 kB
+ users_idx_1 | users_idx_1_uuid_btree             | 3104 kB
+ users_idx_1 | users_idx_1_name_btree             | 3104 kB
+ users_idx_1 | users_idx_1_gender_btree           | 696 kB
+ users_idx_1 | users_idx_1_favourite_color_btree  | 696 kB
+ users_idx_1 | users_idx_1_favourite_word_btree   | 840 kB
+ users_idx_1 | users_idx_1_date_of_birth_btree    | 1488 kB
+ users_idx_1 | users_idx_1_favourite_number_btree | 2208 kB
+ users_idx_2 | users_idx_2_uuid_hash              | 4112 kB
+ users_idx_2 | users_idx_2_name_hash              | 4112 kB
+ users_idx_2 | users_idx_2_gender_hash            | 6064 kB
+ users_idx_2 | users_idx_2_favourite_color_hash   | 6032 kB
+ users_idx_2 | users_idx_2_favourite_word_hash    | 4120 kB
+ users_idx_2 | users_idx_2_date_of_birth_hash     | 4112 kB
+ users_idx_2 | users_idx_2_favourite_number_hash  | 4112 kB
+ users_idx_3 | users_idx_3_gender_part            | 392 kB
+ users_idx_3 | users_idx_3_favourite_color_part   | 88 kB
+ users_idx_3 | users_idx_3_favourite_word_part    | 8192 bytes
+ users_idx_3 | users_idx_3_favourite_number_part  | 8192 bytes
+```
+
 ### Insert Performance
 
 ## Constraints
