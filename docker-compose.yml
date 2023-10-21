@@ -16,6 +16,11 @@ services:
       - ./.docker-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_PASSWORD=postgres
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.50'
+    #       memory: 512M
 
   adminer:
     image: adminer:4.8.1

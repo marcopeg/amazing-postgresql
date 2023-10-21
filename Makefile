@@ -32,6 +32,12 @@ start:
 stop:
 	@echo "Stopping Postgres..."
 	@docker compose down
+
+restart: stop start
+
+clean:
+	@echo "Stopping Postgres..."
+	@docker compose down
 	@docker run --rm -v $(PWD):/data alpine:3.16.0 rm -rf ./data/.docker-data
 
 # Alias for applying the current project's migrations
