@@ -7,6 +7,10 @@ A list of "advanced" examples.
 - [SQL - Advanced Examples](#sql---advanced-examples)
   - [On This Page](#on-this-page)
   - [Quick Start](#quick-start)
+  - [Basic Concepts](#basic-concepts)
+    - [Values](#values)
+    - [Sub Queries](#sub-queries)
+    - [Common Table Expressions](#common-table-expressions)
   - [Generate Series \& Random](#generate-series--random)
   - [Realistic Data Seeding](#realistic-data-seeding)
   - [Data Seeding for Load Tests](#data-seeding-for-load-tests)
@@ -25,7 +29,6 @@ A list of "advanced" examples.
   - [Custom Types](#custom-types)
   - [Documents](#documents)
 
-
 ## Quick Start
 
 From the CLI interface:
@@ -38,6 +41,112 @@ make project from=sql-advanced
 make start
 make reset
 ```
+
+## Basic Concepts
+
+### Values
+
+You can generate datasets using `VALUES`:
+
+```sql
+VALUES 
+  (1, 'Red'),
+  (2, 'Green'),
+  (3, 'Blue'),
+  (4, 'Yellow');
+```
+
+But this will yield unknown columns.
+
+Here is a refined version in which we add column names to it:
+
+```sql
+SELECT * FROM (VALUES 
+  (1, 'Red'),
+  (2, 'Green'),
+  (3, 'Blue'),
+  (4, 'Yellow')
+) AS t(id, color);
+```
+
+And you can go the extra mile and add types:
+
+```sql
+SELECT
+  "c1"::integer AS "id",
+  "c2"::text AS "color"
+FROM (VALUES 
+  (1, 'Red'),
+  (2, 'Green'),
+  (3, 'Blue'),
+  (4, 'Yellow')
+) AS t("c1", "c2");
+```
+
+And you can add your custom values in the mix:
+
+```sql
+SELECT
+  "c1"::integer AS "id",
+  "c2"::text AS "color",
+  123 AS "static_number"
+FROM (VALUES 
+  (1, 'Red'),
+  (2, 'Green'),
+  (3, 'Blue'),
+  (4, 'Yellow')
+) AS t("c1", "c2");
+```
+
+Run this to see all the example at work:
+
+```bash
+make query from=001_values
+```
+
+### Sub Queries
+
+Sub queries are useful into many dynamic data situation.
+
+Let's say that we want to pick athletes that are higher than average:
+
+```sql
+SELECT "id", "name", "height" 
+FROM "athletes"
+WHERE "height" > (
+  SELECT AVG("height") FROM "athletes"
+);
+```
+
+Try this out:
+
+```bash
+make query from=002_sub-query
+```
+
+### Common Table Expressions
+
+Common Table Expressions (CTEs) offer a way to improve readability on complex queries that may end up with multiple sub-queries:
+
+```sql
+WITH avg_height AS (
+  SELECT AVG("height") AS avg_height_value FROM "athletes"
+)
+SELECT "id", "name", "height"
+FROM "athletes", avg_height
+WHERE "height" > avg_height.avg_height_value;
+```
+
+Try this out:
+
+```bash
+make query from=003_cte
+```
+
+> Generally speaking, CTEs have similar performances to the sub-query equivalent. But they are more readable.  
+> 👉 USE CTEs 👈
+
+I often use CTEs to generate datasets or parameters that I want to use inside a complex query. They are also extremely useful while generating random data seeds that necessitates of multiple and complex steps to reach a reasonably good dataset.
 
 ## Generate Series & Random
 
@@ -719,8 +828,6 @@ This could be a real pain!
 ```sql
 UPDATE "users" SET "gender" = 'Fridge' WHERE "gender" = 'M';
 ```
-
-
 
 ## Documents
 
