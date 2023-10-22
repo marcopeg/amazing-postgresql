@@ -2,6 +2,32 @@
 
 A list of "advanced" examples.
 
+## On This Page
+
+- [SQL - Advanced Examples](#sql---advanced-examples)
+  - [On This Page](#on-this-page)
+  - [Quick Start](#quick-start)
+  - [Generate Series \& Random](#generate-series--random)
+  - [Realistic Data Seeding](#realistic-data-seeding)
+  - [Data Seeding for Load Tests](#data-seeding-for-load-tests)
+  - [Index Playground](#index-playground)
+    - [Search by Value \& Sequential Scan](#search-by-value--sequential-scan)
+    - [High Cardinality](#high-cardinality)
+    - [Low Cardinality](#low-cardinality)
+    - [Medium Cardinality](#medium-cardinality)
+    - [Sorting](#sorting)
+    - [Numbers](#numbers)
+    - [Index Sizes](#index-sizes)
+    - [Insert Performance](#insert-performance)
+    - [Index Only Scan](#index-only-scan)
+    - [Composite Indexes](#composite-indexes)
+  - [Checks Constraints](#checks-constraints)
+  - [Custom Types](#custom-types)
+  - [Documents](#documents)
+
+
+## Quick Start
+
 From the CLI interface:
 
 ```bash
@@ -13,7 +39,7 @@ make start
 make reset
 ```
 
-## Data Generation
+## Generate Series & Random
 
 Use `genereate_series` to create a solid foundation to dynamic data seeding:
 
@@ -112,7 +138,7 @@ FROM generate_series(1, 10) AS "n", "raw_data";
 make query from=107_random-array-item
 ```
 
-## Data Seeding
+## Realistic Data Seeding
 
 Let's operate on a simple schema for managing users:
 
@@ -162,9 +188,9 @@ returning *;
 make query from=201_seed-users
 ```
 
-## Massive Data Seeding
+## Data Seeding for Load Tests
 
-When playing around with seeds, it's a good idea to turn off logging:
+When playing around with seeds for load testing, it's a good idea to turn off logging:
 
 ```sql
 ALTER TABLE "users" SET UNLOGGED;
@@ -176,7 +202,7 @@ When you are done, turn it back on:
 ALTER TABLE "users" SET LOGGED;
 ```
 
-## Indexes
+## Index Playground
 
 Before proceeding, create `users` and `users_idx` with the same structure as before.
 
@@ -309,7 +335,7 @@ make query from=305_color
 
 And we basically have the same result.
 
-### Mid Cardinality
+### Medium Cardinality
 
 Let's move to a even higher cardinality (`CARDINALITY=5000`) with the `favourite_word`:
 
@@ -509,6 +535,113 @@ The `hash` index yields the worst possible write performances, while adding a fe
 
 While writing data, all the relative indexes must be written as well. 
 
+### Index Only Scan
+
+So far we ran queries that fetch the entire dataset using `SELECT *`.
+
+This is a convenient choice during an exercise, but it is almost inevitably a poor choice in your software.
+
+Controlling the dataset that you need to extract may lead you to indexing choices such:
+
+```sql
+CREATE INDEX "users_idx_only" ON "users" USING btree ("name") 
+INCLUDE ("date_of_birth");
+```
+
+This index definition is useful for searching over the `name` field as we saw before. But we are also asking the db to keep the `date_of_birth` together with the indexed data.
+
+```bash
+make query from=370_schema
+```
+
+Queries such:
+
+```sql
+SELECT *
+FROM "users"
+where "name" = 'User-100';
+```
+
+will benefit from the index as we saw before.
+
+But more specific queries such:
+
+```sql
+SELECT "name", "date_of_birth"
+FROM "users"
+where "name" = 'User-999';
+```
+
+will hit an `Index Only Scan` that reduces the I/O by using only the index's data to return the full dataset.
+
+```bash
+make query from=370_query
+```
+
+> Including columns in an index will effectively create a sort of **sub-table** and data will be duplicated. This has downsides for bot disk-space and write performances.
+
+### Composite Indexes
+
+A composite index puts together multiple colums from the target table and looks like this:
+
+```sql
+CREATE INDEX "users_idx_comp" ON "users" 
+USING btree ("name", "date_of_birth");
+```
+
+```bash
+make query from=380_schema
+```
+
+This helps with composite filters such as:
+
+```sql
+SELECT *
+FROM "users"
+WHERE "name" = 'User-100'
+  AND "date_of_birth" > '1980-01-01';
+```
+
+```bash
+make query from=380_query
+```
+
+With recent versions of Postgres the order of the fields in the `WHERE` conditions is not relevant.
+
+It is important to notice that you must use all the indexed columns in your query. If you don't, the planner will not use the index and you will end up with a sequential scan:
+
+```sql
+-- this query will NOT hit the index
+SELECT *
+FROM "users"
+WHERE "date_of_birth" > '1980-01-01';
+```
+
+On the contrary, you can add more filters beyond the colums that are specified in the index and still benefit from it:
+
+```sql
+SELECT "name", "date_of_birth"
+FROM "users"
+WHERE "date_of_birth" > '1980-01-01'
+  AND "name" = 'User-100'
+  AND "gender" = 'M';
+```
+
+the execution plan looks like:
+
+```
+Index Scan using users_idx_comp on users  (cost=0.42..8.44 rows=1 width=14) (actual time=0.010..0.010 rows=0 loops=1)
+  Index Cond: ((name = 'User-100'::text) AND (date_of_birth > '1980-01-01'::date))
+  Filter: (gender = 'M'::gender)
+Planning Time: 0.072 ms
+Execution Time: 0.018 ms
+```
+
+Here we can see that the index is hit by the first 2 conditions, then the `gender` is applied to the data out of the filter.
+
+> You should play smart with indexes and use them to reduce the data space on which to apply further filtering. Indexes should rule out big chunks of data, but you can't add an index for every possible query. Not only you will consume a lot of disk and choke your writing performances, but you can also quickly **run out of IOPS credits** on Cloud based virtual discs!
+
+
 ## Checks Constraints
 
 A way to improve the previous schema would be to apply static checks for the low cardinality of the `gender`:
@@ -520,13 +653,13 @@ A way to improve the previous schema would be to apply static checks for the low
 Here is the query to create the new schema:
 
 ```bash
-make query from=350_schema
+make query from=400_schema
 ```
 
 Unfortunately, as the following query demonstrates, the checks are not used at read-time to avoind going through the entire dataset when looking for a value that is not possible anyway:
 
 ```bash
-make query from=351_gender
+make query from=401_gender
 ```
 
 > Checks constraints are great to ensure data integrity at write-time, but can't offer help while reading.
@@ -546,13 +679,13 @@ CREATE UNLOGGED TABLE "users" (
 Here is the query to create the new schema:
 
 ```bash
-make query from=360_schema
+make query from=410_schema
 ```
 
 This approach has the advantage that queries that try to search for values that can not exists will fail:
 
 ```bash
-make query from=361_gender
+make query from=411_gender
 ```
 
 Although custom types make for a great way to add strict rules to the values for low cardinality fields, they might become quite cumbersome when it comes the time to make changes:
@@ -587,4 +720,7 @@ This could be a real pain!
 UPDATE "users" SET "gender" = 'Fridge' WHERE "gender" = 'M';
 ```
 
+
+
 ## Documents
+
