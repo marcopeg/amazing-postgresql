@@ -11,6 +11,13 @@ A list of "advanced" examples.
     - [Values](#values)
     - [Sub Queries](#sub-queries)
     - [Common Table Expressions](#common-table-expressions)
+  - [Joins](#joins)
+    - [Cartesian Product](#cartesian-product)
+    - [Natural Join](#natural-join)
+    - [Join](#join)
+    - [Left/Right Join](#leftright-join)
+    - [Full Outer Join](#full-outer-join)
+    - [Lateral Join](#lateral-join)
   - [Generate Series \& Random](#generate-series--random)
   - [Realistic Data Seeding](#realistic-data-seeding)
   - [Data Seeding for Load Tests](#data-seeding-for-load-tests)
@@ -147,6 +154,175 @@ make query from=003_cte
 > 👉 USE CTEs 👈
 
 I often use CTEs to generate datasets or parameters that I want to use inside a complex query. They are also extremely useful while generating random data seeds that necessitates of multiple and complex steps to reach a reasonably good dataset.
+
+
+## Joins
+
+### Cartesian Product
+
+The cartesian product of 2 or more tables will combine every line of every table with every line of every other table.
+
+```bash
+make query from=010_cartesian
+```
+
+An interesting use case that I came across is to generate language combos out of a sinlge languages table.
+
+```bash
+make query from=011_languages
+```
+
+### Natural Join
+
+This happens when you have matching columns in two different tables:
+
+In a classing invoicing app, both the `invoices` and `lines` tables may have an `invoice_id` column. In such a case, a _natural join_ will do:
+
+```sql
+CREATE TABLE invoice (
+  invoice_id INTEGER PRIMARY KEY,
+  ...
+);
+
+CREATE TABLE lines (
+  line_id INTEGER PRIMARY KEY,
+  invoice_id INTEGER,
+  ...
+);
+
+SELECT *
+FROM invoice
+NATURAL JOIN lines;
+```
+
+Try out the full example:
+
+```bash
+make query from=012_natural-join
+```
+
+### Join
+
+You could have been achieved the very same result with a normal join such as:
+
+```sql
+SELECT *
+FROM "invoices" 
+JOIN "lines" ON "invoices"."invoice_id" = "lines"."invoice_id";
+```
+
+The reason why we see this join more often than a natural join is because more often than not the joining fields have different names in the different tables.
+
+You can also assign aliases to the involved tables to make thinks easier to read:
+
+```sql
+SELECT *
+FROM "invoices" AS "i"
+JOIN "lines" AS "l" ON "i"."id" = "l"."invoice_id";
+```
+
+Last, you can use the aliases to reference the columns you want to extract:
+
+```sql
+SELECT 
+  "i".*,
+  "l"."line_id",
+  "l"."product",
+  "l"."quantity"
+FROM "invoices" AS "i"
+JOIN "lines" AS "l" ON "i"."id" = "l"."invoice_id";
+```
+
+Here is the full code:
+
+```bash
+make query from=013_join
+```
+
+### Left/Right Join
+
+Joining tables yields results that are found in both tables. In the previous dataset there is an invoice to Charlie that has no lines. Using a normal join we would miss such result.
+
+```sql
+SELECT *
+FROM "invoices" 
+LEFT JOIN "lines" ON "invoices"."id" = "lines"."invoice_id";
+```
+
+Using `LEFT JOIN` shows also invoice n.3 - Charlie's - but without any associated line:
+
+```
+ id | customer | invoice_date | line_id | invoice_id | product | quantity 
+----+----------+--------------+---------+------------+---------+----------
+  1 | Alice    | 2022-01-01   |       1 |          1 | Apple   |        1
+  1 | Alice    | 2022-01-01   |       2 |          1 | Banana  |        2
+  2 | Bob      | 2022-01-02   |       3 |          2 | Cherry  |        1
+  2 | Bob      | 2022-01-02   |       4 |          2 | Date    |        3
+  3 | Charlie  | 2022-01-03   |         |            |         |    
+```
+
+The `RIGHT JOIN` works the other way around:
+
+```sql
+SELECT *
+FROM "invoices" 
+RIGHT JOIN "lines" ON "invoices"."id" = "lines"."invoice_id";
+```
+
+in our case, it highlights a data inconsistency because we have an invoice line that refers to a non existing invoice:
+
+```
+ id | customer | invoice_date | line_id | invoice_id | product | quantity 
+----+----------+--------------+---------+------------+---------+----------
+  1 | Alice    | 2022-01-01   |       1 |          1 | Apple   |        1
+  1 | Alice    | 2022-01-01   |       2 |          1 | Banana  |        2
+  2 | Bob      | 2022-01-02   |       3 |          2 | Cherry  |        1
+  2 | Bob      | 2022-01-02   |       4 |          2 | Date    |        3
+    |          |              |       5 |         20 | Sausage |        3
+```
+
+> Note that this inconsistency would not be possible had we introduced relational constraints!
+
+```bash
+make query from=014_join-left-right
+```
+
+### Full Outer Join
+
+This join basically combines left + right:
+
+```sql
+SELECT *
+FROM "invoices" 
+FULL OUTER JOIN "lines" ON "invoices"."id" = "lines"."invoice_id";
+```
+
+yielding:
+
+```
+ id | customer | invoice_date | line_id | invoice_id | product | quantity 
+----+----------+--------------+---------+------------+---------+----------
+  1 | Alice    | 2022-01-01   |       1 |          1 | Apple   |        1
+  1 | Alice    | 2022-01-01   |       2 |          1 | Banana  |        2
+  2 | Bob      | 2022-01-02   |       3 |          2 | Cherry  |        1
+  2 | Bob      | 2022-01-02   |       4 |          2 | Date    |        3
+    |          |              |       5 |         20 | Sausage |        3
+  3 | Charlie  | 2022-01-03   |         |            |         |    
+```
+
+It produces matching and non matching rows from both sides.
+
+```bash
+make query from=015_outer-join
+```
+
+### Lateral Join
+
+Lateral joins are the best of the bunch. It lets you run sub-queries that can reference the row matched by the first one.
+
+```bash
+make query from=016_lateral-join
+```
 
 ## Generate Series & Random
 
@@ -828,6 +1004,7 @@ This could be a real pain!
 ```sql
 UPDATE "users" SET "gender" = 'Fridge' WHERE "gender" = 'M';
 ```
+
 
 ## Documents
 
