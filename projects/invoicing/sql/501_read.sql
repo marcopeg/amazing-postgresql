@@ -1,4 +1,0 @@
-SELECT * 
-FROM "tasks"
-ORDER BY "id"
-FOR UPDATE SKIP LOCKED;

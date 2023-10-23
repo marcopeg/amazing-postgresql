@@ -1,1 +1,0 @@
-SELECT generate_series(1, 10) AS "n", random() AS "r";
