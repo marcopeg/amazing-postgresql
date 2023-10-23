@@ -34,6 +34,7 @@ A list of "advanced" examples.
     - [Composite Indexes](#composite-indexes)
   - [Checks Constraints](#checks-constraints)
   - [Custom Types](#custom-types)
+  - [For Update Skip Locked](#for-update-skip-locked)
   - [Documents](#documents)
 
 ## Quick Start
@@ -1005,6 +1006,135 @@ This could be a real pain!
 UPDATE "users" SET "gender" = 'Fridge' WHERE "gender" = 'M';
 ```
 
+## For Update Skip Locked
+
+One of the most powerful inventions of humankind are queues. 
+
+In nature everything happens at once, usually with violent and devastating effects. But we've learned to harness this messy situation and quietly perform one task at the time. Slow and steady wins the race, isn't that right? Right?
+
+Let's explore queues in Postgres using a simple schema:
+
+```sql
+-- Super duper simple tasks management
+CREATE TABLE tasks (
+  "id" SERIAL PRIMARY KEY
+);
+
+-- Insert 3 tasks
+INSERT INTO tasks DEFAULT VALUES;
+INSERT INTO tasks DEFAULT VALUES;
+INSERT INTO tasks DEFAULT VALUES;
+```
+
+This is enough to play with, for we are going to use some simple magic tricks to makes the common problems evident.
+
+Now, it's not really important _WHAT_ we are going to do with our tasks. What really matters is that performed **one task should be once**.
+
+So our "task" will simply append the _TaskID_ into a log table that offer no constraints:
+
+```sql
+CREATE TABLE logs (
+  "value" INTEGER
+);
+```
+
+You can create the schema with:
+
+```bash
+make query from=500_schema
+```
+
+Let's now create our task implementation using a CTE:
+
+```sql
+WITH
+-- Pick the next task to run:
+"pick_task" AS (
+  SELECT * FROM "tasks"
+  ORDER BY "id"
+  LIMIT 1
+),
+-- Simulate a very slow job:
+"slow_log" AS (
+  INSERT INTO "logs"
+  SELECT "id" FROM "pick_task", pg_sleep(5)
+  returning *
+)
+-- Complete the task:
+DELETE FROM "tasks"
+WHERE "id" IN (SELECT "value" FROM "slow_log")
+RETURNING CONCAT('Completed TaskID: ', "id");
+```
+
+Run this from multiple terminal windows.
+
+```bash
+make query from=500_worker
+```
+
+> We set a sleep time of 5 seconds so you have plenty of time to run it from multiple terminals.
+> You can also increase this time to make it more comfortable.
+
+👉 I want you to understand that this is not how we should test for concurrency In Real Life. This is a super-duper simple and slow didactical implementation 👈
+
+Anyway, once you run the worker 3 times, the `tasks` table should be empty, and the `logs` table should contain `1, 2, 3`, right? Because only 3 tasks were to be executed.
+
+🧐 But in the `logs` table we have a situation like `1, 1, 2, 2, 3, 3`. 🧐
+
+**Each task has been executed twice!**  
+<small>_Well, it depends how many clients did you run._</small>
+
+
+Let's now introduce `FOR UPDATE SKIP LOCKED`:
+
+```sql
+WITH
+"pick_task" AS (
+  SELECT * FROM "tasks"
+  ...
+  FOR UPDATE SKIP LOCKED
+),
+```
+
+Run it again from multiple clients:
+
+```bash
+make query from=500_worker-safe
+```
+
+🤪 This is as close as it can get to a freakin **magic spell**.
+
+Postgres manages our behalf a **row-level lock** for all the lines identified by the `SELECT` (that's the `FOR UPDATE` part), but also skips any already locked row (that's the `SKIP LOCKED`).
+
+Let's break this down into two different queries to better understand it.  
+<small>(Reset your schema `make query from=500_schema`)</small>
+
+The first query is designed to acquire the lock as first thing, then to await some time before releasing it:
+
+```sql
+WITH "data" AS (
+  SELECT * FROM "tasks"
+  ORDER BY "id"
+  LIMIT 1
+  FOR UPDATE
+)
+SELECT "id" FROM "data", pg_sleep(5);
+```
+
+And the second is even simpler because there is no awaiting time. This one is designed to run fast and demonstrate the different visibile rows while the first query blocks some of them:
+
+```sql
+SELECT * FROM "tasks"
+ORDER BY "id"
+FOR UPDATE SKIP LOCKED;
+```
+
+You can play with those:
+
+```bash
+make query from=501_lock
+make query from=501_read
+```
 
 ## Documents
 
