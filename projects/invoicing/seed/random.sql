@@ -46,7 +46,7 @@ WITH
   SELECT 
     "product_id",
     "items"[1 + floor(random() * array_length("items", 1))::integer] AS tenant_id
-  FROM generate_series(1, 10000) product_id, "randomized_tenants_list"
+  FROM generate_series(1, 250000) product_id, "randomized_tenants_list"
 )
 INSERT INTO "products" ("tenant_id", "name", "price", "stock_quantity")
 SELECT
@@ -73,7 +73,7 @@ WITH
   SELECT 
     "product_id",
     "items"[1 + floor(random() * array_length("items", 1))::integer] AS user_id
-  FROM generate_series(1, 10000) product_id, "randomized_users_list"
+  FROM generate_series(1, 500000) product_id, "randomized_users_list"
 )
 INSERT INTO "invoices" ("tenant_id", "user_id", "created_at")
 SELECT
