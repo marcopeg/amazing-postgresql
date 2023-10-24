@@ -82,7 +82,8 @@ reset:
 	@docker exec -i pg psql -U postgres template1 -c 'DROP DATABASE IF EXISTS "$(db)";'
 	@docker exec -i pg psql -U postgres template1 -c 'CREATE DATABASE "$(db)";'
 
-rebuild: reset up
+init: up seed
+rebuild: reset init
 
 #
 # Unit Tests

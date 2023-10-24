@@ -31,6 +31,7 @@ CREATE TABLE invoices (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
 -- Invoice Items
 CREATE TABLE invoice_items (
     invoice_item_id SERIAL PRIMARY KEY,
