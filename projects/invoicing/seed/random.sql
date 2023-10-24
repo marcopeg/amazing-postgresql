@@ -1,3 +1,4 @@
+-- Disable WAL logging to improve seeding speed:
 ALTER TABLE "invoice_items" SET UNLOGGED;
 ALTER TABLE "invoices" SET UNLOGGED;
 ALTER TABLE "products" SET UNLOGGED;
@@ -7,7 +8,7 @@ ALTER TABLE "tenants" SET UNLOGGED;
 -- Generate X Tenants
 INSERT INTO "tenants" ("name")
 SELECT concat('Tenant-', n)
-FROM generate_series(1, 1000) "n";
+FROM generate_series(1, 100) "n";
 
 -- For 80% of Tenants, generate 1-5 Users
 DO $$ 
@@ -46,7 +47,7 @@ WITH
   SELECT 
     "product_id",
     "items"[1 + floor(random() * array_length("items", 1))::integer] AS tenant_id
-  FROM generate_series(1, 250000) product_id, "randomized_tenants_list"
+  FROM generate_series(1, 25000) product_id, "randomized_tenants_list"
 )
 INSERT INTO "products" ("tenant_id", "name", "price", "stock_quantity")
 SELECT
@@ -73,7 +74,7 @@ WITH
   SELECT 
     "product_id",
     "items"[1 + floor(random() * array_length("items", 1))::integer] AS user_id
-  FROM generate_series(1, 500000) product_id, "randomized_users_list"
+  FROM generate_series(1, 50000) product_id, "randomized_users_list"
 )
 INSERT INTO "invoices" ("tenant_id", "user_id", "created_at")
 SELECT
@@ -99,7 +100,7 @@ JOIN LATERAL (
   LIMIT (floor(random() * (26))::integer)
 ) AS p ON true;
 
-
+-- Re-enable WAL logging
 ALTER TABLE "tenants" SET LOGGED;
 ALTER TABLE "users" SET LOGGED;
 ALTER TABLE "products" SET LOGGED;
