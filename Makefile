@@ -40,9 +40,6 @@ clean:
 	@docker compose down
 	@docker run --rm -v $(PWD):/data alpine:3.16.0 rm -rf ./data/.docker-data
 
-# Alias for applying the current project's migrations
-init: up
-
 psql:
 	@echo "Connecting to the database ("quit" to exit) ..."
 	@docker exec -it pg psql -U postgres postgres
