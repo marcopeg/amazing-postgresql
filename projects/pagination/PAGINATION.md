@@ -30,6 +30,24 @@ docker run --rm \
   -c max_connections=10
 ```
 
+## Queries
+
+Run a query:
+
+```bash
+docker exec -it pg psql -U postgres -d postgres -f /b/relay.sql
+```
+
+Benchmark a query:
+
+```bash
+# Optional: init pgbenchmark
+docker exec -it pg pgbench -U postgres -i postgres
+
+# Run the benchmark
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/offset-1.sql postgres
+```
+
 ## Schema
 
 ```sql
@@ -146,7 +164,6 @@ OFFSET 10 * (500 - 1);
 ```
 
 ```bash
-docker exec -it pg pgbench -U postgres -i postgres
 docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/offset-1.sql postgres
 docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/offset-10.sql postgres
 docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/offset-100.sql postgres
@@ -579,3 +596,41 @@ here is the updated dataset:
 
 Also here it is clearly visibile that the performances do not degrade with the progress of the cursor.
 It is also noticeable that we are loading our limited db with more calculations (base64 does not come cheap).
+
+## Relay APIs
+
+```sql
+WITH
+params(page_size, user_id, last_cursor) AS (
+  VALUES (10, 'user123', null)
+),
+tokens AS (
+  SELECT
+    COALESCE(NULLIF(SPLIT_PART(convert_from(decode(last_cursor, 'base64'), 'UTF8'), '-', 1), ''), '0')::INT AS last_amount,
+    COALESCE(NULLIF(SPLIT_PART(convert_from(decode(last_cursor, 'base64'), 'UTF8'), '-', 2), ''), '0')::INT AS last_id
+  FROM params
+),
+dataset as (
+  (
+    SELECT *, encode(convert_to(amount || '-' || id, 'UTF8'), 'base64') AS cursor FROM invoices
+    WHERE user_id = (SELECT user_id FROM params)
+      AND amount > (SELECT last_amount FROM tokens)
+    ORDER BY amount ASC, id ASC
+    LIMIT (SELECT page_size FROM params)
+  ) UNION ALL (
+    SELECT *, encode(convert_to(amount || '-' || id, 'UTF8'), 'base64') AS cursor FROM invoices
+    WHERE user_id = (SELECT user_id FROM params)
+      AND amount = (SELECT last_amount FROM tokens)
+      AND id > (SELECT last_id FROM tokens)
+    ORDER BY amount ASC, id ASC
+    LIMIT (SELECT page_size FROM params)
+  )
+  ORDER BY amount ASC, id ASC
+  LIMIT (SELECT page_size FROM params)
+)
+SELECT json_build_object(
+  'next', (SELECT id FROM dataset ORDER BY id DESC LIMIT 1 OFFSET 10),
+  'has_more', (SELECT count(*) > 10 FROM dataset),
+  'data', (SELECT json_agg(t) FROM (SELECT * FROM dataset LIMIT 10) t)
+) AS result_json;
+```
