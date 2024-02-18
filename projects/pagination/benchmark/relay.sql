@@ -1,6 +1,6 @@
 WITH
 params(page_size, user_id, last_cursor) AS (
-  VALUES (10, 'user123', null)
+  VALUES (20, 'user123', null)
 ),
 tokens AS (
   SELECT
@@ -10,24 +10,25 @@ tokens AS (
 ),
 dataset as (
   (
-    SELECT *, encode(convert_to(amount || '-' || id, 'UTF8'), 'base64') AS cursor FROM invoices
+    SELECT * FROM invoices
     WHERE user_id = (SELECT user_id FROM params)
       AND amount > (SELECT last_amount FROM tokens)
     ORDER BY amount ASC, id ASC
-    LIMIT (SELECT page_size FROM params)
+    LIMIT (SELECT page_size + 1 FROM params)
   ) UNION ALL (
-    SELECT *, encode(convert_to(amount || '-' || id, 'UTF8'), 'base64') AS cursor FROM invoices
+    SELECT * FROM invoices
     WHERE user_id = (SELECT user_id FROM params)
       AND amount = (SELECT last_amount FROM tokens)
       AND id > (SELECT last_id FROM tokens)
     ORDER BY amount ASC, id ASC
-    LIMIT (SELECT page_size FROM params)
+    LIMIT (SELECT page_size + 1 FROM params)
   )
   ORDER BY amount ASC, id ASC
-  LIMIT (SELECT page_size FROM params)
+  LIMIT (SELECT page_size + 1 FROM params)
 )
 SELECT json_build_object(
-  'next', (SELECT id FROM dataset ORDER BY id DESC LIMIT 1 OFFSET 10),
-  'has_more', (SELECT count(*) > 10 FROM dataset),
-  'data', (SELECT json_agg(t) FROM (SELECT * FROM dataset LIMIT 10) t)
+  'cursor', (SELECT encode(convert_to(amount || '-' || id, 'UTF8'), 'base64') AS cursor FROM dataset LIMIT 1 OFFSET (SELECT page_size FROM params)),
+  'has_more', (SELECT count(*) > (SELECT page_size FROM params) FROM dataset),
+  'num_rows', (SELECT count(*) FROM dataset),
+  'rows', (SELECT json_agg(t) FROM (SELECT * FROM dataset LIMIT (SELECT page_size FROM params)) t)
 ) AS result;
