@@ -12,7 +12,7 @@ docker run --rm \
   --name pg \
   -e POSTGRES_PASSWORD=postgres \
   -v pgdata:/var/lib/postgresql/data \
-  -v ./benchmark:/b \
+  -v ./sql:/sql \
   -p 5432:5432 postgres
 
 # test instance
@@ -20,7 +20,7 @@ docker run --rm \
   --name pg \
   -e POSTGRES_PASSWORD=postgres \
   -v pgdata:/var/lib/postgresql/data \
-  -v ./benchmark:/b \
+  -v ./sql:/sql \
   -p 5432:5432 \
   --memory="256m" \
   --cpus="0.5" postgres \
@@ -35,7 +35,7 @@ docker run --rm \
 Run a query:
 
 ```bash
-docker exec -it pg psql -U postgres -d postgres -f /b/relay.sql
+docker exec -it pg psql -U postgres -d postgres -f /sql/relay.sql
 ```
 
 Benchmark a query:
@@ -45,7 +45,7 @@ Benchmark a query:
 docker exec -it pg pgbench -U postgres -i postgres
 
 # Run the benchmark
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/offset-1.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/offset-1.sql postgres
 ```
 
 ## Schema
@@ -164,10 +164,10 @@ OFFSET 10 * (500 - 1);
 ```
 
 ```bash
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/offset-1.sql postgres
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/offset-10.sql postgres
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/offset-100.sql postgres
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/offset-500.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/offset-1.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/offset-10.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/offset-100.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/offset-500.sql postgres
 ```
 
 ![Performance Over Offset](./images/offset-user-id.svg)
@@ -181,7 +181,7 @@ WHERE user_id = 'user123';
 ```
 
 ```bash
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 10 -f /b/count-pages.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 10 -f /sql/count-pages.sql postgres
 ```
 
 ## Cursor Pagination
@@ -217,10 +217,10 @@ LIMIT 10;
 ```
 
 ```bash
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/cursor-id-p0.sql postgres
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/cursor-id-p1.sql postgres
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/cursor-id-p2.sql postgres
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/cursor-id-p3.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/cursor-id-p0.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/cursor-id-p1.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/cursor-id-p2.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/cursor-id-p3.sql postgres
 ```
 
 ![Performance Over Cursor (Primary Key)](./images/cursor-primary-key.svg)
@@ -267,10 +267,10 @@ LIMIT 10;
 ```
 
 ```bash
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/cursor-date-p0.sql postgres
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/cursor-date-p1.sql postgres
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/cursor-date-p2.sql postgres
-docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /b/cursor-date-p3.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/cursor-date-p0.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/cursor-date-p1.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/cursor-date-p2.sql postgres
+docker exec -it pg pgbench -U postgres -c 4 -j 2 -t 100 -f /sql/cursor-date-p3.sql postgres
 ```
 
 ![Performance Over Cursor (Date)](./images/cursor-date.svg)
@@ -379,10 +379,10 @@ LIMIT 10;
 ```
 
 ```bash
-docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /b/cursor-amount-p0.sql postgres
-docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /b/cursor-amount-p1.sql postgres
-docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /b/cursor-amount-p2.sql postgres
-docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /b/cursor-amount-p3.sql postgres
+docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /sql/cursor-amount-p0.sql postgres
+docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /sql/cursor-amount-p1.sql postgres
+docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /sql/cursor-amount-p2.sql postgres
+docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /sql/cursor-amount-p3.sql postgres
 ```
 
 ```prompt
@@ -567,10 +567,10 @@ select encode(convert_to(750 || '-' || 0, 'UTF8'), 'base64');
 ```
 
 ```bash
-docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /b/cursor-opaque-p0.sql postgres
-docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /b/cursor-opaque-p1.sql postgres
-docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /b/cursor-opaque-p2.sql postgres
-docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /b/cursor-opaque-p3.sql postgres
+docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /sql/cursor-opaque-p0.sql postgres
+docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /sql/cursor-opaque-p1.sql postgres
+docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /sql/cursor-opaque-p2.sql postgres
+docker exec -it pg pgbench -U postgres -c 8 -j 5 -t 1000 -f /sql/cursor-opaque-p3.sql postgres
 ```
 
 ```prompt

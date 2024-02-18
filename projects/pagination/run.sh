@@ -48,34 +48,6 @@ if [ ! -f "$FILE_TO_MONITOR" ]; then
   exit 1
 fi
 
-# Ensure inotifywait is installed
-if ! command -v fswatch &> /dev/null; then
-  echo "WARINING: Please install inotify-tools."
-  echo ""
-  echo "\$> brew install fswatch"
-  echo ""
-  echo "Press ENTER to run the installation command, or ANY KEY to cancel."
-  
-  # Capture user input
-  IFS= read -r -n1 -s input
-  case "$input" in
-    '') # ENTER
-      echo "Installing..."
-      brew install fswatch
-      ;;
-    *)
-      echo "Installation canceled."
-      exit 1
-      ;;
-  esac
-fi
-
-echo "Watching \"./${FILE_PATH}\"."
-echo "Ctrl+C to stop."
+echo "Running \"./${FILE_PATH}\"."
 echo ""
-
-# Monitor the file for modifications
-fswatch -0 "$FILE_TO_MONITOR" | while IFS= read -r -d "" event; do
-  echo "[$(date "+%H:%M:%S")] File \"${FILE_PATH}\" has changed!"
-  docker exec -i "$DOCKER_CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -f "/sql/$(basename "$FILE_PATH")"
-done
+docker exec -i "$DOCKER_CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -f "/sql/$(basename "$FILE_PATH")"
