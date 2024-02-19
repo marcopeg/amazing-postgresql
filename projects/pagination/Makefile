@@ -39,3 +39,24 @@ init:
 	./run.sh sql/sql1/_schema.sql
 	./run.sh sql/sql1/_seed.sql
 	./run.sh sql/sql1/_index.sql
+
+test:
+	@rm -rf log.csv
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/offset.sql -p page=1
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/offset.sql -p page=100
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/offset.sql -p page=250
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/offset.sql -p page=500
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/offset.sql -p page=750
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/offset.sql -p page=990
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=0
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=100
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=250
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=500
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=750
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=990
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=0
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=100
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=250
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=500
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=750
+	./bench.sh -t 1000 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=990

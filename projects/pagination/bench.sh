@@ -2,6 +2,7 @@
 
 # Default file name, without extension
 FILE_PATH=""
+LOG_FILE=""
 DOCKER_CONTAINER_NAME="pg"
 DB_USER="postgres"
 DB_NAME="postgres"
@@ -35,9 +36,10 @@ if [ $# -eq 0 ] || [[ "$@" == *"-h"* ]]; then
 fi
 
 # Now, process the remaining options
-while getopts "f:d:u:n:c:j:t:p:vh" opt; do
+while getopts "f:l:d:u:n:c:j:t:p:vh" opt; do
   case $opt in
     f) FILE_PATH="$OPTARG";;
+    l) LOG_FILE="$OPTARG";;
     d) DB_NAME="$OPTARG";;
     u) DB_USER="$OPTARG";;
     n) DOCKER_CONTAINER_NAME="$OPTARG";;
@@ -83,18 +85,6 @@ done
 # Construct the docker exec command
 COMMAND="docker exec -i \"$DOCKER_CONTAINER_NAME\" pgbench -U \"$DB_USER\" -c $NUM_CLIENTS -j $NUM_THREADS -t $NUM_TRANSACTIONS -f \"/sql/${FILE_PATH#*/}\" $PARAMS_STRING $DB_NAME 2>/dev/null"
 
-# Print the command
-#echo "$COMMAND"
-
-# Run the command
-# eval "$COMMAND"
-
-# # Run the command and save the output
-# OUTPUT=$(eval "$COMMAND")
-
-# TPS=$(echo "$OUTPUT" | grep "tps = " | awk '{print int($3)}')
-# echo $TPS
-
 if $VERBOSE; then
   # If verbose is true, run the command and print the output
   eval "$COMMAND"
@@ -103,4 +93,9 @@ else
   OUTPUT=$(eval "$COMMAND")
   TPS=$(echo "$OUTPUT" | grep "tps = " | awk '{print int($3)}')
   echo $TPS
+fi
+
+# If a log file is specified, append the information to it
+if [[ -n "$LOG_FILE" ]]; then
+  echo "$FILE_PATH,$NUM_CLIENTS,$NUM_THREADS,$NUM_TRANSACTIONS,${PARAMETERS[*]},$TPS" >> "$LOG_FILE"
 fi
