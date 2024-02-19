@@ -1,6 +1,7 @@
 fast:
 	@docker volume create pgdata 1>/dev/null
 	@docker stop pg 2>/dev/null || true
+	@docker rm pg 2>/dev/null || true
 	@docker run -d --rm \
 		--name pg \
 		-e POSTGRES_PASSWORD=postgres \
@@ -19,6 +20,7 @@ down: stop
 slow:
 	@docker volume create pgdata 1>/dev/null
 	@docker stop pg 2>/dev/null || true
+	@docker rm pg 2>/dev/null || true
 	@docker run -d --rm \
 		--name pg \
 		-e POSTGRES_PASSWORD=postgres \
