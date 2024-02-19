@@ -11,6 +11,7 @@ fast:
 
 stop:
 	@docker stop pg 2>/dev/null || true
+	@docker rm pg 2>/dev/null || true
 
 down: stop
 	@docker volume rm pgdata 2>/dev/null || true
