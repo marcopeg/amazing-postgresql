@@ -44,7 +44,6 @@ test.clear:
 	@rm -rf log.csv
 
 test.offset:
-	@rm -rf log.csv
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/offset.sql -p page=1
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/offset.sql -p page=10
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/offset.sql -p page=25
@@ -58,7 +57,6 @@ test.offset:
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/offset.sql -p page=350
 
 test.cursor.or:
-	@rm -rf log.csv
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=1
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=10
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=25
@@ -72,7 +70,6 @@ test.cursor.or:
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=350
 
 test.cursor.union:
-	@rm -rf log.csv
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=1
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=10
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=25
