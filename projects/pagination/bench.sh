@@ -11,8 +11,31 @@ NUM_TRANSACTIONS=100
 PARAMETERS=()
 VERBOSE=false
 
+# Function to display help message
+display_help() {
+    echo "Usage: $0 [option...]" >&2
+    echo
+    echo "   -f FILE_PATH             Path to the file"
+    echo "   -d DB_NAME               Database name"
+    echo "   -u DB_USER               Database user"
+    echo "   -n DOCKER_CONTAINER_NAME Docker container name"
+    echo "   -c NUM_CLIENTS           Number of clients"
+    echo "   -j NUM_THREADS           Number of threads"
+    echo "   -t NUM_TRANSACTIONS      Number of transactions"
+    echo "   -p PARAMETERS            Additional parameters"
+    echo "   -v                       Verbose mode"
+    echo "   -h                       Display help"
+    echo
+    exit 1
+}
+
+# If no arguments or -h is present, display help
+if [ $# -eq 0 ] || [[ "$@" == *"-h"* ]]; then
+  display_help
+fi
+
 # Now, process the remaining options
-while getopts "f:d:u:n:c:j:t:p:v" opt; do
+while getopts "f:d:u:n:c:j:t:p:vh" opt; do
   case $opt in
     f) FILE_PATH="$OPTARG";;
     d) DB_NAME="$OPTARG";;
@@ -23,6 +46,7 @@ while getopts "f:d:u:n:c:j:t:p:v" opt; do
     t) NUM_TRANSACTIONS="$OPTARG";;
     p) PARAMETERS+=("$OPTARG");;
     v) VERBOSE=true;;
+    h) display_help;;
     \?) echo "Invalid option -$OPTARG" >&2; exit 1;;
   esac
 done
@@ -31,6 +55,11 @@ done
 if [[ -z "$FILE_PATH" ]]; then
   echo "Usage: $0 [options] <file-path>" >&2
   exit 1
+fi
+
+# If FILE_PATH starts with ./, remove it
+if [[ $FILE_PATH == ./* ]]; then
+  FILE_PATH="${FILE_PATH:2}"
 fi
 
 # Complete file path
