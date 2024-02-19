@@ -34,6 +34,6 @@ slow:
 		-c max_connections=100
 
 init:
-	./run.sh sql/sq1/_schema.sql
-	./run.sh sql/sq1/_seed.sql
-	./run.sh sql/sq1/_index.sql
+	./run.sh sql/sql1/_schema.sql
+	./run.sh sql/sql1/_seed.sql
+	./run.sh sql/sql1/_index.sql
