@@ -56,4 +56,4 @@ fi
 
 echo "Running \"./${FILE_PATH}\"."
 echo ""
-docker exec -i "$DOCKER_CONTAINER_NAME" pgbench -U "$DB_USER" -c $NUM_CLIENTS -j $NUM_THREADS -t $NUM_TRANSACTIONS -f "/sql/${FILE_PATH#*/}" $DB_NAME
+docker exec -i "$DOCKER_CONTAINER_NAME" pgbench -U "$DB_USER" -c $NUM_CLIENTS -j $NUM_THREADS -t $NUM_TRANSACTIONS -f "/sql/${FILE_PATH#*/}" $DB_NAME 2>/dev/null
