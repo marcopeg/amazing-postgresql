@@ -57,29 +57,29 @@ test.offset:
 	./bench.sh -t 100 -l log.csv -f ./sql/sql1/offset.sql -p page=350
 
 test.cursor.or:
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=1
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=10
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=25
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=50
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=75
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=100
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=150
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=200
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=250
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=300
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p page=350
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=1
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=10
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=25
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=50
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=75
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=100
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=150
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=200
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=250
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=300
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-or.sql -p amount=350
 
 test.cursor.union:
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=1
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=10
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=25
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=50
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=75
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=100
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=150
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=200
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=250
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=300
-	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p page=350
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=1
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=10
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=25
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=50
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=75
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=100
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=150
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=200
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=250
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=300
+	./bench.sh -t 100 -l log.csv -f ./sql/sql1/cursor-union.sql -p amount=350
 
 test: test.clear test.offset test.cursor.or test.cursor.union
