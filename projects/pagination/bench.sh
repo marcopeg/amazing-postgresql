@@ -9,26 +9,10 @@ NUM_CLIENTS=10
 NUM_THREADS=10
 NUM_TRANSACTIONS=100
 PARAMETERS=()
-
-# First, extract the file path which is not an option (not starting with '-')
-# for arg in "$@"; do
-#   if [[ "$arg" != -* ]]; then
-#     FILE_PATH="$arg"
-#     break # Stop at the first non-option argument
-#   fi
-# done
-
-# Remove the file path from the arguments list
-# args=()
-# for arg in "$@"; do
-#   if [[ "$arg" != "$FILE_PATH" ]]; then
-#     args+=("$arg")
-#   fi
-# done
-# set -- "${args[@]}"
+VERBOSE=false
 
 # Now, process the remaining options
-while getopts "f:d:u:n:c:j:t:p:" opt; do
+while getopts "f:d:u:n:c:j:t:p:v" opt; do
   case $opt in
     f) FILE_PATH="$OPTARG";;
     d) DB_NAME="$OPTARG";;
@@ -38,6 +22,7 @@ while getopts "f:d:u:n:c:j:t:p:" opt; do
     j) NUM_THREADS="$OPTARG";;
     t) NUM_TRANSACTIONS="$OPTARG";;
     p) PARAMETERS+=("$OPTARG");;
+    v) VERBOSE=true;;
     \?) echo "Invalid option -$OPTARG" >&2; exit 1;;
   esac
 done
@@ -63,8 +48,8 @@ for param in "${PARAMETERS[@]}"; do
   PARAMS_STRING+=" -D \"$param\""
 done
 
-echo "Running \"./${FILE_PATH}\"."
-echo ""
+# echo "Running \"./${FILE_PATH}\"."
+# echo ""
 
 # Construct the docker exec command
 COMMAND="docker exec -i \"$DOCKER_CONTAINER_NAME\" pgbench -U \"$DB_USER\" -c $NUM_CLIENTS -j $NUM_THREADS -t $NUM_TRANSACTIONS -f \"/sql/${FILE_PATH#*/}\" $PARAMS_STRING $DB_NAME 2>/dev/null"
@@ -73,4 +58,20 @@ COMMAND="docker exec -i \"$DOCKER_CONTAINER_NAME\" pgbench -U \"$DB_USER\" -c $N
 #echo "$COMMAND"
 
 # Run the command
-eval "$COMMAND"
+# eval "$COMMAND"
+
+# # Run the command and save the output
+# OUTPUT=$(eval "$COMMAND")
+
+# TPS=$(echo "$OUTPUT" | grep "tps = " | awk '{print int($3)}')
+# echo $TPS
+
+if $VERBOSE; then
+  # If verbose is true, run the command and print the output
+  eval "$COMMAND"
+else
+  # If verbose is false, run the command, save the output, and extract the TPS value
+  OUTPUT=$(eval "$COMMAND")
+  TPS=$(echo "$OUTPUT" | grep "tps = " | awk '{print int($3)}')
+  echo $TPS
+fi
