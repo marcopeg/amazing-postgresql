@@ -2,4 +2,4 @@ SELECT * FROM invoices
 WHERE user_id = 'user50'
 ORDER BY amount ASC, id ASC
 LIMIT 10
-OFFSET 10 * (250 - 1);
+OFFSET 10 * (:page - 1);
