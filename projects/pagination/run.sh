@@ -50,4 +50,4 @@ fi
 
 echo "Running \"./${FILE_PATH}\"."
 echo ""
-docker exec -i "$DOCKER_CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -f "/sql/$(basename "$FILE_PATH")"
+docker exec -i "$DOCKER_CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -f "/sql/${FILE_PATH#*/}"

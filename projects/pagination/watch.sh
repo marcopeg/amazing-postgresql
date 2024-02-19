@@ -77,5 +77,5 @@ echo ""
 # Monitor the file for modifications
 fswatch -0 "$FILE_TO_MONITOR" | while IFS= read -r -d "" event; do
   echo "[$(date "+%H:%M:%S")] File \"${FILE_PATH}\" has changed!"
-  docker exec -i "$DOCKER_CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -f "/sql/$(basename "$FILE_PATH")"
+  docker exec -i "$DOCKER_CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -f "/sql/${FILE_PATH#*/}"
 done
