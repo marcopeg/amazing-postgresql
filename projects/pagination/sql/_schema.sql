@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS invoices CASCADE;
+
+CREATE TABLE invoices (
+  id SERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  amount INT NOT NULL,
+  date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  product_id TEXT NOT NULL
+);
