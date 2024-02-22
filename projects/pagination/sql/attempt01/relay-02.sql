@@ -1,6 +1,6 @@
 WITH
 params(page_size, user_id, last_cursor) AS (
-  VALUES (10, 'user123', 'NTAwLTA=')
+  VALUES (10, 'user12', null)
 ),
 decode_cursor as (
   SELECT convert_from(decode(last_cursor, 'base64'), 'UTF8') as decoded from params

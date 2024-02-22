@@ -1,6 +1,6 @@
 WITH
 params(page_size, user_id, last_cursor) AS (
-  VALUES (10, 'user123', null)
+  VALUES (10, 'user12', null)
 ),
 tokens AS (
   SELECT
