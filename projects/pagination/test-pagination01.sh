@@ -9,6 +9,7 @@ TOTAL_LOOPS=10
 WAIT=5
 SLEEP=1
 KEEP_DATA=0
+PAGE_SIZE=50
 
 # Help function
 function show_help() {
@@ -42,12 +43,13 @@ for arg in "$@"; do
     "--sleep") set -- "$@" "-y" ;;
     "--wait") set -- "$@" "-z" ;;
     "--keep-data") set -- "$@" "-k" ;;
+    "--page-size") set -- "$@" "-g" ;;
     *) set -- "$@" "$arg" ;;
   esac
 done
 
 # Now, process the remaining options
-while getopts "c:j:t:l:r:x:y:z:hk" opt; do
+while getopts "c:j:t:l:r:x:y:z:g:hk" opt; do
   case $opt in
     c) CLIENTS="$OPTARG";;
     j) THREADS="$OPTARG";;
@@ -57,6 +59,7 @@ while getopts "c:j:t:l:r:x:y:z:hk" opt; do
     x) TOTAL_LOOPS="$OPTARG";;
     y) SLEEP="$OPTARG";;
     z) WAIT="$OPTARG";;
+    g) PAGE_SIZE="$OPTARG";;
     k) KEEP_DATA=1;;
     h) display_help;;
     \?) echo "Invalid option -$OPTARG" >&2; exit 1;;
@@ -94,6 +97,7 @@ do
     --log-file $LOG_FILE \
     --serie-name "offset" \
     --param page=$i \
+    --param size=$PAGE_SIZE \
     > /dev/null 2>&1
   sleep $SLEEP
 done

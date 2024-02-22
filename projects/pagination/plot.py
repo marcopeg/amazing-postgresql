@@ -16,8 +16,6 @@ df['pagination_depth'] = df['pagination_depth'].apply(lambda x: int(x.split('=')
 # Normalize offset pagination value
 df.loc[df['series_name'] == 'offset', 'pagination_depth'] *= 10
 
-#print(df)
-
 # Plotting
 fig, ax = plt.subplots()
 
