@@ -1,1 +1,1 @@
-select count(*) from invoices where user_id = :userId
+select count(*) from invoices where user_id = 'user12'

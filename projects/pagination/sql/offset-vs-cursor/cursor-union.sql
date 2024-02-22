@@ -3,16 +3,16 @@
   WHERE user_id = 'user50'
     AND amount > :amount
   ORDER BY amount ASC, id ASC
-  LIMIT 10
+  LIMIT :pageSize
 )
 UNION ALL
 (
   SELECT * FROM invoices
   WHERE user_id = 'user50'
     AND amount = :amount
-    AND id > 0
+    AND id > :id
   ORDER BY amount ASC, id ASC
-  LIMIT 10
+  LIMIT :pageSize
 )
 ORDER BY amount ASC, id ASC
-LIMIT 10;
+LIMIT :pageSize;

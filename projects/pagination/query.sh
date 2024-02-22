@@ -135,6 +135,7 @@ if [[ $DRY_RUN == false ]]; then
   if [[ $EXTRACT == false ]]; then
     eval "$COMMAND"
   else
-    echo $(eval $COMMAND | awk 'NR==3 {print $1}')
+    RESULT=$(eval "$COMMAND")
+    echo $(echo "$RESULT" | awk 'NR==3 {print $1}')
   fi
 fi

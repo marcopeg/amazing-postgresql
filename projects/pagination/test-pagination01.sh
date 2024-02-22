@@ -97,44 +97,50 @@ do
     --log-file $LOG_FILE \
     --serie-name "offset" \
     --param page=$i \
-    --param size=$PAGE_SIZE \
-    > /dev/null 2>&1
+    --param pageSize=$PAGE_SIZE
+    #  \
+    # > /dev/null 2>&1
   sleep $SLEEP
 done
 echo ""
 
 
-# Run cursor-or test
-# echo "> Running cursor-or test..."
-# for ((i=1; i<=TOTAL_LOOPS; i++))
-# do
-#   echo "test page ${i}/${TOTAL_LOOPS} and sleep for $SLEEP seconds..."
-#   ./bench.sh \
-#     -c $CLIENTS \
-#     -j $THREADS \
-#     -t $TRANSACTIONS \
-#     --file ./sql/offset-vs-cursor/cursor-or.sql \
-#     --log-file $LOG_FILE \
-#     --serie-name "cursor-or" \
-#     --param amount=$(((i * 10) - 10)) \
-#     > /dev/null 2>&1
-#   sleep $SLEEP
-# done
-# echo ""
+run_cursor_pagination() {
+  NEXT_AMOUNT=0
+  NEXT_ID=0
+  for ((i=1; i<=TOTAL_LOOPS; i++))
+  do
+    echo "test page ${i}/${TOTAL_LOOPS} and sleep for $SLEEP seconds..."
 
-# Run cursor-union test
-echo "> Running cursor-union test..."
-for ((i=1; i<=TOTAL_LOOPS; i++))
-do
-  echo "test page ${i}/${TOTAL_LOOPS} and sleep for $SLEEP seconds..."
-  ./bench.sh \
-    -c $CLIENTS \
-    -j $THREADS \
-    -t $TRANSACTIONS \
-    --file ./sql/offset-vs-cursor/cursor-union.sql \
-    --log-file $LOG_FILE \
-    --serie-name "cursor-union" \
-    --param amount=$(((i * 10) - 10)) \
-    > /dev/null 2>&1
-  sleep $SLEEP
-done
+    # Run cursor-union test
+    ./bench.sh \
+      -c $CLIENTS \
+      -j $THREADS \
+      -t $TRANSACTIONS \
+      --file ./sql/offset-vs-cursor/$1.sql \
+      --log-file $LOG_FILE \
+      --serie-name "$1" \
+      --param amount=$NEXT_AMOUNT \
+      --param id=$NEXT_ID \
+      --param pageSize=$PAGE_SIZE \
+      > /dev/null 2>&1
+
+    # Calculate next cursor to log next page
+    NEXT_CURSOR=$(./query.sh -e \
+      -f ./sql/offset-vs-cursor/$1-next.sql \
+      -p amount=$NEXT_AMOUNT \
+      -p id=$NEXT_ID \
+      -p pageSize=$PAGE_SIZE
+    )
+    IFS="-" read -r NEXT_AMOUNT NEXT_ID <<< "$NEXT_CURSOR"
+
+    sleep $SLEEP
+  done
+}
+
+# echo "Run cursor pagination (union)"
+run_cursor_pagination "cursor-union"
+echo ""
+
+echo "Run cursor pagination (or)"
+run_cursor_pagination "cursor-or"
