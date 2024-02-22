@@ -1,0 +1,1 @@
+select count(*) from invoices where user_id = :userId

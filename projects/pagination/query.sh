@@ -1,6 +1,12 @@
 #!/bin/bash
 
-
+is_numeric() {
+  if [[ $1 =~ ^[0-9]+$ ]]; then
+    echo "true"
+  else
+    echo "false"
+  fi
+}
 
 # Default file name, without extension
 FILE_PATH=""
@@ -10,6 +16,7 @@ DB_NAME="postgres"
 PARAMETERS=()
 VERBOSE=false
 DRY_RUN=false
+EXTRACT=false
 
 
 # Function to display help message
@@ -23,6 +30,7 @@ display_help() {
   echo "   -n DOCKER_CONTAINER_NAME        Docker container name"
   echo "   -p --param PARAMETERS           Additional parameters"
   echo "   -v --verbose                    Verbose mode"
+  echo "   -e --extract                    Extract returning value"
   echo "   -r --dry-run                    Composes and prints out the query"
   echo "   -h --help                       Display help"
   echo
@@ -42,6 +50,7 @@ for arg in "$@"; do
     "--verbose") set -- "$@" "-v" ;;
     "--param") set -- "$@" "-p" ;;
     "--file") set -- "$@" "-f" ;;
+    "--extract") set -- "$@" "-e" ;;
     "--dry-run") set -- "$@" "-r" ;;
     "--"*) echo "Unsupported option $arg. Use -h for help." >&2; exit 1 ;;
     *) set -- "$@" "$arg" ;;
@@ -49,7 +58,7 @@ for arg in "$@"; do
 done
 
 # Now, process the remaining options
-while getopts "f:d:u:n:p:vhr" opt; do
+while getopts "f:d:u:n:p:vhre" opt; do
   case $opt in
     f) FILE_PATH="$OPTARG";;
     d) DB_NAME="$OPTARG";;
@@ -58,6 +67,7 @@ while getopts "f:d:u:n:p:vhr" opt; do
     p) PARAMETERS+=("$OPTARG");;
     v) VERBOSE=true;;
     r) DRY_RUN=true;;
+    e) EXTRACT=true;;
     h) display_help;;
     \?) echo "Invalid option -$OPTARG" >&2; exit 1;;
   esac
@@ -96,12 +106,18 @@ if [[ $VERBOSE == true ]]; then
 fi
 
 
-
 # Build the query out of the input parameters
 QUERY=""
 for param in "${PARAMETERS[@]}"; do
   IFS="=" read -r key value <<< "$param"
-  QUERY+="-e 's/:$key/$value/g' "
+
+  # Dynamically inject wrappers for strings
+  if [[ $(is_numeric "$value") == "true" ]]; then
+    QUERY+="-e 's/:$key/$value/g' "
+  else
+    escaped_value=$(echo "$value" | sed "s/'/'\\\\''/g")
+    QUERY+="-e 's/:$key/'\''$escaped_value'\''/g' "
+  fi
 done
 QUERY=$(cat $FILE_TO_MONITOR | tr '\n' ' ' | eval sed "$QUERY")
 
@@ -115,5 +131,10 @@ fi
 if [[ $DRY_RUN == false ]]; then
   escaped_query=$(echo "$QUERY" | sed "s/'/'\\\\''/g")
   COMMAND="docker exec -i $DOCKER_CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c '$escaped_query'"
-  eval "$COMMAND"
+
+  if [[ $EXTRACT == false ]]; then
+    eval "$COMMAND"
+  else
+    echo $(eval $COMMAND | awk 'NR==3 {print $1}')
+  fi
 fi
