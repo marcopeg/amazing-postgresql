@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#
+# Query runner by MarcoPeg & ChatGPT
+# Mostly by ChatGPT 😅
+# 
+#
+
 help() {
   echo "Description: This script allows you to run parametric queries compatible with the pgbench parameters notation."
   echo "Usage: $0 -f file.sql -p limit=10 -p page=3 [...options]"
@@ -15,7 +21,7 @@ help() {
   echo "   --db-user                       Database user (default: postgres)"
   echo "   --container-name                Docker container name (default: pg)"
   echo
-  exit 1
+  exit 0
 }
 
 is_numeric() {
@@ -228,7 +234,16 @@ if [[ $DRY_RUN == false ]]; then
   fi
 
   if [[ $EXTRACT == false ]]; then
+    start_time=$(date +%s.%N) # Get start time in seconds with fractional nanoseconds
     eval "$COMMAND"
+    end_time=$(date +%s.%N) # Get end time in the same format
+
+    # Calculate elapsed time in milliseconds using bc for high precision
+    elapsed_time=$(echo "$end_time - $start_time" | bc)
+
+    # Convert to milliseconds and print
+    elapsed_time_in_ms=$(echo "$elapsed_time * 1000" | bc)
+    echo "Execution time: $elapsed_time_in_ms ms"
   else
     RESULT=$(eval "$COMMAND")
     echo $(echo "$RESULT" | awk 'NR==3 {print $1}')
