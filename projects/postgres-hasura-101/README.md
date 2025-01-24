@@ -114,6 +114,10 @@ The following notes are written using MacOS as running environment and assume yo
 
 [![Open in GitPod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io#https://github.com/marcopeg/amazing-postgresql)
 
+👉 [You can also do it on a Codeanywhere Workspace! 🔗](https://app.codeanywhere.com/#https://github.com/marcopeg/amazing-postgresql)
+
+[![Open in Codeanywhere](https://codeanywhere.com/img/open-in-codeanywhere-btn.svg)](https://app.codeanywhere.com/#https://github.com/marcopeg/amazing-postgresql)
+
 ---
 
 ## Run the Project
